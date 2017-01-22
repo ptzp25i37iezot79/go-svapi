@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"encoding/xml"
+	"net/http/httptest"
 )
 
 func TestInitialize(t *testing.T) {
@@ -15,8 +16,8 @@ func TestInitialize(t *testing.T) {
 	Initialize("/v1", middlewareLog)
 
 	Server.RegisterService(new(APITodo), "todo")
-
-	http.ListenAndServe(":8080", Server.GetRouter())
+	server := httptest.NewServer(Server.GetRouter())
+	defer server.Close()
 }
 
 func middlewareLog(next http.Handler) http.Handler {
