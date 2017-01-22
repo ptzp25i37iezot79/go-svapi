@@ -43,7 +43,7 @@ func (c *serverResponseJSON) WriteError(w http.ResponseWriter, status int, err e
 func (c *serverResponseJSON) writeServerResponse(w http.ResponseWriter, status int, res interface{}) {
 	b, err := json.Marshal(res)
 	if err != nil {
-		WritePureError(w, 400, err.Error())
+		writePureError(w, 400, err.Error())
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)

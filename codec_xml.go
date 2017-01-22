@@ -50,7 +50,7 @@ func (c *serverResponseXML) WriteError(w http.ResponseWriter, status int, errIn 
 func (c *serverResponseXML) writeServerResponse(w http.ResponseWriter, status int, res interface{}) {
 	b, err := xml.MarshalIndent(res, "", " ")
 	if err != nil {
-		WritePureError(w, 500, err.Error())
+		writePureError(w, 500, err.Error())
 	}
 	w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 	w.WriteHeader(status)

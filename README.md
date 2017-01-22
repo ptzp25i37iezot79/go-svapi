@@ -71,7 +71,6 @@ func (self *ApiTodo) Get(r *http.Request, Args *ApiTodo_arg, Reply *ApiTodo_arg)
 And middleware_log example is:
 
 ```go
-    
 func middleware_log(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("URL Raw Query %v", r.URL.RawQuery)
@@ -79,7 +78,6 @@ func middleware_log(next http.Handler) http.Handler {
 	}
 	return http.HandlerFunc(fn)
 }
-
 ```
 
 And make request by curl (for json output)
