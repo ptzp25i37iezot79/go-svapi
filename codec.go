@@ -45,7 +45,7 @@ func newCodecRequest(r *http.Request, cResp codecServerResponseInterface) *Codec
 	// Decode the request body and check if RPC method is valid.
 	defer r.Body.Close()
 	req := new(serverRequest)
-	req.Method = r.Context().Value(keyMethodID).(string)
+	req.Method = r.Context().Value(KeyMethodID).(string)
 
 	var errr error
 	if r.Method == "POST" {
@@ -83,6 +83,9 @@ func (c *CodecRequest) ReadRequest(args interface{}) error {
 		} else {
 			c.err = errors.New("api: method request ill-formed: missing params field")
 		}
+	}
+	if c.err != nil {
+		c.err = &Error{Code: 444, Message: c.err.Error()}
 	}
 	return c.err
 }

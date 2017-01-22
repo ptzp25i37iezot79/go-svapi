@@ -10,8 +10,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"log"
-
 	"github.com/gorilla/schema"
 	"github.com/justinas/alice"
 	"github.com/riftbit/httprouterc"
@@ -20,7 +18,7 @@ import (
 type keyCtx int
 
 const (
-	keyMethodID keyCtx = iota
+	KeyMethodID keyCtx = iota
 )
 
 var (
@@ -86,14 +84,12 @@ func wrapHandler(h http.Handler) httprouterc.Handle {
 
 func apiHandler(w http.ResponseWriter, r *http.Request) {
 
-	log.Println(keyMethodID)
-
-	if strings.Contains(r.Context().Value("method").(string), ".") != true {
+	if strings.Contains(r.Context().Value(httprouterc.KeyParamID).(string), ".") != true {
 		writePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
 		return
 	}
 
-	partsMethod := strings.SplitN(r.Context().Value("method").(string), ".", 2)
+	partsMethod := strings.SplitN(r.Context().Value(httprouterc.KeyParamID).(string), ".", 2)
 	if len(partsMethod) < 2 {
 		writePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
 		return
@@ -101,10 +97,8 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 	partsMethod[1] = strings.Title(partsMethod[1])
 	method := strings.Join(partsMethod, ".")
 
-	log.Println(keyMethodID)
-	ctx := context.WithValue(r.Context(), "method", method)
+	ctx := context.WithValue(r.Context(), KeyMethodID, method)
 	r = r.WithContext(ctx)
-	log.Println(keyMethodID)
 
 	if Server.HasMethod(method) == false {
 		writePureError(w, 404, "api: Method not found: "+method)
