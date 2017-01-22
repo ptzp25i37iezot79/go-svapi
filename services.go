@@ -18,6 +18,7 @@ import (
 type keyCtx int
 
 const (
+	//KeyMethodID contains ID for context to get method name
 	KeyMethodID keyCtx = iota
 )
 
