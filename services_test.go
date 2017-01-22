@@ -12,14 +12,14 @@ import (
 func TestInitialize(t *testing.T) {
 	os.Setenv("TESTING", "YES")
 
-	Initialize("/v1", middleware_log)
+	Initialize("/v1", middlewareLog)
 
-	Server.RegisterService(new(ApiTodo), "todo")
+	Server.RegisterService(new(APITodo), "todo")
 
 	http.ListenAndServe(":8080", Server.GetRouter())
 }
 
-func middleware_log(next http.Handler) http.Handler {
+func middlewareLog(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("URL Raw Query %v", r.URL.RawQuery)
 		next.ServeHTTP(w, r)
@@ -27,16 +27,16 @@ func middleware_log(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-type ApiTodo struct{}
+type APITodo struct{}
 
-type ApiTodo_arg struct {
+type APITodoArg struct {
 	XMLName xml.Name `xml:"todo" json:"-"`
 	Title   string   `json:"title" xml:"title"`
 	Body    string   `schema:"-" json:"body" xml:"body"`
 	Tags    []string `schema:"tags[]" json:"tags" xml:"tags"`
 }
 
-func (self *ApiTodo) Get(r *http.Request, Args *ApiTodo_arg, Reply *ApiTodo_arg) error {
+func (a *APITodo) Get(r *http.Request, Args *APITodoArg, Reply *APITodoArg) error {
 	Reply.Tags = Args.Tags
 	Reply.Title = Args.Title
 	Reply.Body = Args.Body
