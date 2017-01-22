@@ -12,14 +12,13 @@ import (
 )
 
 func TestInitialize(t *testing.T) {
-	//Initializing VAPI (required)
+	os.Setenv("TESTING", "YES")
+
 	vapi.Initialize("/v1", middleware_log)
 
 	vapi.Server.RegisterService(new(ApiTodo), "todo")
 
 	http.ListenAndServe(":8080", vapi.Server.GetRouter())
-
-	os.Setenv("TESTING", "YES")
 }
 
 func middleware_log(next http.Handler) http.Handler {
