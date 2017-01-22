@@ -102,7 +102,7 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 	method := strings.Join(partsMethod, ".")
 
 	log.Println(keyMethodID)
-	ctx := context.WithValue(r.Context(), keyMethodID, method)
+	ctx := context.WithValue(r.Context(), "method", method)
 	r = r.WithContext(ctx)
 	log.Println(keyMethodID)
 
