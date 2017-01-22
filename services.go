@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	Server *ApiServer
+	Server *apiServer
 	// Precompute the reflect.Type of error and http.Request
 	typeOfError     = reflect.TypeOf((*error)(nil)).Elem()
 	typeOfRequest   = reflect.TypeOf((*http.Request)(nil)).Elem()
@@ -43,28 +43,27 @@ type serviceMethod struct {
 	replyType reflect.Type   // type of the response argument
 }
 
-type ApiServer struct {
+type apiServer struct {
 	services *serviceMap
 	router   *httprouterc.Router
 }
 
-func (as *ApiServer) AddRoute(method string, uri string, h http.Handler) {
+//AddRoute add route with http.Handler
+func (as *apiServer) AddRoute(method string, uri string, h http.Handler) {
 	as.router.Handle(method, uri, wrapHandler(h))
 }
 
-func (as *ApiServer) AddRouteF(method string, uri string, h http.HandlerFunc) {
-	as.router.Handle(method, uri, Wrap(h))
+//AddRouteF add route with http.HandlerFunc
+func (as *apiServer) AddRouteF(method string, uri string, h http.HandlerFunc) {
+	as.router.Handle(method, uri, wrap(h))
 }
 
-func (as *ApiServer) GetRouter() *httprouterc.Router {
+//GetRouter get router for http.ListenAndServe
+func (as *apiServer) GetRouter() *httprouterc.Router {
 	return as.router
 }
 
-func (as *ApiServer) ListenAndServe(addr string) error {
-	return http.ListenAndServe(addr, as.router)
-}
-
-func Wrap(h http.HandlerFunc, m ...alice.Constructor) httprouterc.Handle {
+func wrap(h http.HandlerFunc, m ...alice.Constructor) httprouterc.Handle {
 	b := baseMiddleWares.Extend(alice.New(m...))
 	return wrapHandler(b.ThenFunc(h))
 }
@@ -76,16 +75,16 @@ func wrapHandler(h http.Handler) httprouterc.Handle {
 	}
 }
 
-func ApiHandler(w http.ResponseWriter, r *http.Request) {
+func apiHandler(w http.ResponseWriter, r *http.Request) {
 
 	if strings.Contains(r.Context().Value("method").(string), ".") != true {
-		WritePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
+		writePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
 		return
 	}
 
 	partsMethod := strings.SplitN(r.Context().Value("method").(string), ".", 2)
 	if len(partsMethod) < 2 {
-		WritePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
+		writePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
 		return
 	}
 	partsMethod[1] = strings.Title(partsMethod[1])
@@ -95,24 +94,25 @@ func ApiHandler(w http.ResponseWriter, r *http.Request) {
 	r = r.WithContext(ctx)
 
 	if Server.HasMethod(method) == false {
-		WritePureError(w, 404, "api: Method not found: "+method)
+		writePureError(w, 404, "api: Method not found: "+method)
 		return
 	} else {
 		Server.ServeHTTP(w, r)
 	}
 }
 
+//Initialize init basic variables with params and middlewares
 func Initialize(baseURL string, middlewares ...alice.Constructor) {
 	Server = newApiServer(baseURL, middlewares...)
 }
 
 // NewServer returns a new RPC server.
-func newApiServer(baseURL string, middlewares ...alice.Constructor) *ApiServer {
+func newApiServer(baseURL string, middlewares ...alice.Constructor) *apiServer {
 	router := httprouterc.New()
-	router.GET(baseURL+"/:method", Wrap(ApiHandler, middlewares...))
-	router.POST(baseURL+"/:method", Wrap(ApiHandler, middlewares...))
+	router.GET(baseURL+"/:method", wrap(apiHandler, middlewares...))
+	router.POST(baseURL+"/:method", wrap(apiHandler, middlewares...))
 
-	return &ApiServer{
+	return &apiServer{
 		services: new(serviceMap),
 		router:   router,
 	}
@@ -121,7 +121,7 @@ func newApiServer(baseURL string, middlewares ...alice.Constructor) *ApiServer {
 // HasMethod returns true if the given method is registered.
 //
 // The method uses a dotted notation as in "Service.Method".
-func (s *ApiServer) HasMethod(method string) bool {
+func (s *apiServer) HasMethod(method string) bool {
 	if _, _, err := s.services.get(method); err == nil {
 		return true
 	}
@@ -144,7 +144,7 @@ func (s *ApiServer) HasMethod(method string) bool {
 //    - The method has return type error.
 //
 // All other methods are ignored.
-func (s *ApiServer) RegisterService(receiver interface{}, name string) error {
+func (s *apiServer) RegisterService(receiver interface{}, name string) error {
 	return s.services.register(receiver, name)
 }
 
@@ -172,7 +172,7 @@ func (m *serviceMap) get(method string) (*service, *serviceMethod, error) {
 	return service, serviceMethod, nil
 }
 
-// get returns a registered service given a method name.
+// GetAll returns an all registered services
 //
 // The method name uses a dotted notation as in "Service.Method".
 func (m *serviceMap) GetAll() (map[string]*service, error) {
@@ -278,9 +278,9 @@ func isExportedOrBuiltin(t reflect.Type) bool {
 }
 
 // ServeHTTP
-func (s *ApiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *apiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" && r.Method != "GET" {
-		WritePureError(w, 405, "api: POST or GET method required, received "+r.Method)
+		writePureError(w, 405, "api: POST or GET method required, received "+r.Method)
 		return
 	}
 
@@ -297,7 +297,7 @@ func (s *ApiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Get service method to be called.
 	method, errMethod := codecReq.Method()
 	if errMethod != nil {
-		WritePureError(w, 400, errMethod.Error())
+		writePureError(w, 400, errMethod.Error())
 		return
 	}
 
@@ -341,7 +341,7 @@ func (s *ApiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func WritePureError(w http.ResponseWriter, status int, msg string) {
+func writePureError(w http.ResponseWriter, status int, msg string) {
 	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprint(w, msg)

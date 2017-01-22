@@ -18,11 +18,7 @@ type serverResponseJSON struct {
 	//Error *errorJSON `json:"error,omitempty"`
 }
 
-type ResultJSON struct {
-	Response interface{} `xml:"response"`
-}
-
-type ErrorJSON struct {
+type errorJSON struct {
 	Code    int         `json:"error_code"`
 	Message string      `json:"error_msg"`            /* required */ // A Primitive or Structured value that contains additional information about the error.
 	Data    interface{} `json:"error_data,omitempty"` /* optional */
@@ -36,10 +32,11 @@ func (c *serverResponseJSON) WriteResponse(w http.ResponseWriter, reply interfac
 	c.writeServerResponse(w, 200, res)
 }
 
+// WriteError encodes the error response and writes it to the ResponseWriter.
 func (c *serverResponseJSON) WriteError(w http.ResponseWriter, status int, err error) {
 	res := struct {
 		Error interface{} `json:"error"`
-	}{ErrorJSON{Code: err.(*Error).Code, Message: err.(*Error).Message, Data: err.(*Error).Data}}
+	}{errorJSON{Code: err.(*Error).Code, Message: err.(*Error).Message, Data: err.(*Error).Data}}
 	c.writeServerResponse(w, status, res)
 }
 

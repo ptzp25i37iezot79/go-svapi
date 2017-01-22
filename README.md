@@ -26,7 +26,6 @@ import (
 	"github.com/riftbit/go-vapi"
 )
 
-
 func main() {
 	//Initializing VAPI (required)
 	vapi.Initialize("/v1") // This method can receive middlewares as additional params
@@ -86,11 +85,11 @@ func middleware_log(next http.Handler) http.Handler {
 And make request by curl (for json output)
 
 ```
-curl -X POST -d 'title=New Todo' -d 'body=This is a new todo' -d 'tags[]=Todo' -d 'tags[]=Tag' http://127.0.0.1:8080
+curl -X POST -d 'title=New Todo' -d 'body=This is a new todo' -d 'tags[]=Todo' -d 'tags[]=Tag' http://127.0.0.1:8080/v1/todo.get
 ```
 
 Or for XML output
 
 ```
-curl -X POST -d 'title=New Todo' -d 'body=This is a new todo' -d 'tags[]=Todo' -d 'tags[]=Tag' http://127.0.0.1:8080?format=xml
+curl -X POST -d 'title=New Todo' -d 'body=This is a new todo' -d 'tags[]=Todo' -d 'tags[]=Tag' http://127.0.0.1:8080/v1/todo.get?format=xml
 ```

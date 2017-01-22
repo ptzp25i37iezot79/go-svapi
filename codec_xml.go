@@ -18,31 +18,32 @@ type serverResponseXML struct {
 	//Error *ErrorXML
 }
 
-type ResultXML struct {
+type resultXML struct {
 	XMLName  xml.Name    `xml:"response"`
 	Response interface{} `xml:"result"`
 }
 
-type ErrorXML struct {
+type errorXML struct {
 	XMLName xml.Name    `xml:"error"`
 	Code    int         `xml:"error_code"`
 	Message string      `xml:"error_msg"`            /* required */ // A Primitive or Structured value that contains additional information about the error.
 	Data    interface{} `xml:"error_data,omitempty"` /* optional */
 }
 
-func (e *ErrorXML) Error() string {
+func (e *errorXML) Error() string {
 	return e.Message
 }
 
 // WriteResponse encodes the response and writes it to the ResponseWriter.
 func (c *serverResponseXML) WriteResponse(w http.ResponseWriter, reply interface{}) {
-	var answer ResultXML
+	var answer resultXML
 	answer.Response = reply
 	c.writeServerResponse(w, 200, answer)
 }
 
+// WriteError encodes the error response and writes it to the ResponseWriter.
 func (c *serverResponseXML) WriteError(w http.ResponseWriter, status int, errIn error) {
-	res := ErrorXML{Code: errIn.(*Error).Code, Message: errIn.(*Error).Message, Data: errIn.(*Error).Data}
+	res := errorXML{Code: errIn.(*Error).Code, Message: errIn.(*Error).Message, Data: errIn.(*Error).Data}
 	c.writeServerResponse(w, status, res)
 }
 
