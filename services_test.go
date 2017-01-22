@@ -7,18 +7,16 @@ import (
 	"testing"
 
 	"encoding/xml"
-
-	"github.com/riftbit/vapi"
 )
 
 func TestInitialize(t *testing.T) {
 	os.Setenv("TESTING", "YES")
 
-	vapi.Initialize("/v1", middleware_log)
+	Initialize("/v1", middleware_log)
 
-	vapi.Server.RegisterService(new(ApiTodo), "todo")
+	Server.RegisterService(new(ApiTodo), "todo")
 
-	http.ListenAndServe(":8080", vapi.Server.GetRouter())
+	http.ListenAndServe(":8080", Server.GetRouter())
 }
 
 func middleware_log(next http.Handler) http.Handler {
