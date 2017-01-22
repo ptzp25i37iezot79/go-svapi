@@ -8,7 +8,7 @@ vk styled api package for easy api developing
 [![Coverage Status](https://coveralls.io/repos/github/riftbit/go-vapi/badge.svg?branch=master)](https://coveralls.io/github/riftbit/go-vapi?branch=master)
 [![Build Status](https://travis-ci.org/riftbit/go-vapi.svg?branch=master)](https://travis-ci.org/riftbit/go-vapi)
 [![Go Report Card](https://goreportcard.com/badge/github.com/riftbit/go-vapi)](https://goreportcard.com/report/github.com/riftbit/go-vapi)
-[![Release](https://img.shields.io/badge/release-v1.0.2-blue.svg?style=flat)](https://github.com/riftbit/go-vapi/releases)
+[![Release](https://img.shields.io/badge/release-v1.0.0-blue.svg?style=flat)](https://github.com/riftbit/go-vapi/releases)
 
 ## Installation
 
@@ -86,11 +86,11 @@ func middleware_log(next http.Handler) http.Handler {
 And make request by curl (for json output)
 
 ```
-	curl -X POST -d 'title=New Todo' -d 'body=This is a new todo' -d 'tags[]=Todo' -d 'tags[]=Tag' http://127.0.0.1:8080
+curl -X POST -d 'title=New Todo' -d 'body=This is a new todo' -d 'tags[]=Todo' -d 'tags[]=Tag' http://127.0.0.1:8080
 ```
 
 Or for XML output
 
 ```
-	curl -X POST -d 'title=New Todo' -d 'body=This is a new todo' -d 'tags[]=Todo' -d 'tags[]=Tag' http://127.0.0.1:8080?format=xml
+curl -X POST -d 'title=New Todo' -d 'body=This is a new todo' -d 'tags[]=Todo' -d 'tags[]=Tag' http://127.0.0.1:8080?format=xml
 ```
