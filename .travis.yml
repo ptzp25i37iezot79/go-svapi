@@ -1,0 +1,50 @@
+language: go
+
+os:
+  - linux
+
+addons:
+  apt:
+    packages:
+    - pandoc 
+  apt_packages:
+    - pandoc
+
+go:
+  - 1.6.3
+  - 1.7.4
+  - tip
+
+matrix:
+  allow_failures:
+    - go: tip
+
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+
+before_install:
+
+install:
+ - go get -t ./...
+ - go get -u github.com/stretchr/testify/assert
+ - go get -u github.com/golang/lint/golint
+ - go get -u golang.org/x/tools/cmd/goimports
+ - go get -u golang.org/x/tools/cmd/cover
+ - go get -u github.com/mattn/goveralls
+
+before_script:
+
+script:
+ - go vet ./...
+ - diff <(goimports -d .) <(printf "")
+ - diff <(golint ./...) <(printf "")
+ - go test -v -covermode=count -coverprofile=coverage.out
+ - goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+
+after_script:
+
+after_success:
+
+after_failure:
