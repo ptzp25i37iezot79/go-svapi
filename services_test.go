@@ -26,10 +26,10 @@ func TestInitialize(t *testing.T) {
 		t.Fatalf("Received non-404 response: %d\n", resp.StatusCode)
 	}
 
-	//resp, err = http.Get(server.URL + "/v1/todo.get")
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
+	resp, err = http.Get(server.URL + "/v1/todo.get")
+	if err != nil {
+		t.Fatal(err)
+	}
 	//if resp.StatusCode != 404 {
 	//	t.Fatalf("Received non-200 response: %d\n", resp.StatusCode)
 	//}
