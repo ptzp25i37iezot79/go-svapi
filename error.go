@@ -1,6 +1,6 @@
 package vapi
 
-//Error
+//Error ...
 type Error struct {
 	Code    int         `json:"code"`    /* required */ // A Number that indicates the error type that occurred.
 	Message string      `json:"message"` /* required */ // A String providing a short description of the error.  The message SHOULD be limited to a concise single sentence.

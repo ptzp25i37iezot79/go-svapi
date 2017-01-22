@@ -15,6 +15,12 @@ import (
 	"github.com/riftbit/httprouterc"
 )
 
+type keyCtx int
+
+const (
+	keyMethodID keyCtx = iota
+)
+
 var (
 	//Server main variable
 	Server *apiServer
@@ -78,20 +84,20 @@ func wrapHandler(h http.Handler) httprouterc.Handle {
 
 func apiHandler(w http.ResponseWriter, r *http.Request) {
 
-	if strings.Contains(r.Context().Value("method").(string), ".") != true {
-		writePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
+	if strings.Contains(r.Context().Value(keyMethodID).(string), ".") != true {
+		writePureError(w, 404, "api: Method not found: "+r.Context().Value(keyMethodID).(string))
 		return
 	}
 
-	partsMethod := strings.SplitN(r.Context().Value("method").(string), ".", 2)
+	partsMethod := strings.SplitN(r.Context().Value(keyMethodID).(string), ".", 2)
 	if len(partsMethod) < 2 {
-		writePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
+		writePureError(w, 404, "api: Method not found: "+r.Context().Value(keyMethodID).(string))
 		return
 	}
 	partsMethod[1] = strings.Title(partsMethod[1])
 	method := strings.Join(partsMethod, ".")
 
-	ctx := context.WithValue(r.Context(), "method", method)
+	ctx := context.WithValue(r.Context(), keyMethodID, method)
 	r = r.WithContext(ctx)
 
 	if Server.HasMethod(method) == false {

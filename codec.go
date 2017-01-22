@@ -45,7 +45,7 @@ func newCodecRequest(r *http.Request, cResp codecServerResponseInterface) *Codec
 	// Decode the request body and check if RPC method is valid.
 	defer r.Body.Close()
 	req := new(serverRequest)
-	req.Method = r.Context().Value("method").(string)
+	req.Method = r.Context().Value(keyMethodID).(string)
 
 	var errr error
 	if r.Method == "POST" {
