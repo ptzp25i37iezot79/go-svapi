@@ -16,6 +16,7 @@ import (
 )
 
 var (
+	//Server main variable
 	Server *apiServer
 	// Precompute the reflect.Type of error and http.Request
 	typeOfError     = reflect.TypeOf((*error)(nil)).Elem()
@@ -96,18 +97,18 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 	if Server.HasMethod(method) == false {
 		writePureError(w, 404, "api: Method not found: "+method)
 		return
-	} else {
-		Server.ServeHTTP(w, r)
 	}
+
+	Server.ServeHTTP(w, r)
 }
 
 //Initialize init basic variables with params and middlewares
 func Initialize(baseURL string, middlewares ...alice.Constructor) {
-	Server = newApiServer(baseURL, middlewares...)
+	Server = newAPIServer(baseURL, middlewares...)
 }
 
 // NewServer returns a new RPC server.
-func newApiServer(baseURL string, middlewares ...alice.Constructor) *apiServer {
+func newAPIServer(baseURL string, middlewares ...alice.Constructor) *apiServer {
 	router := httprouterc.New()
 	router.GET(baseURL+"/:method", wrap(apiHandler, middlewares...))
 	router.POST(baseURL+"/:method", wrap(apiHandler, middlewares...))
@@ -121,8 +122,8 @@ func newApiServer(baseURL string, middlewares ...alice.Constructor) *apiServer {
 // HasMethod returns true if the given method is registered.
 //
 // The method uses a dotted notation as in "Service.Method".
-func (s *apiServer) HasMethod(method string) bool {
-	if _, _, err := s.services.get(method); err == nil {
+func (as *apiServer) HasMethod(method string) bool {
+	if _, _, err := as.services.get(method); err == nil {
 		return true
 	}
 	return false
@@ -144,8 +145,8 @@ func (s *apiServer) HasMethod(method string) bool {
 //    - The method has return type error.
 //
 // All other methods are ignored.
-func (s *apiServer) RegisterService(receiver interface{}, name string) error {
-	return s.services.register(receiver, name)
+func (as *apiServer) RegisterService(receiver interface{}, name string) error {
+	return as.services.register(receiver, name)
 }
 
 // get returns a registered service given a method name.
@@ -278,7 +279,7 @@ func isExportedOrBuiltin(t reflect.Type) bool {
 }
 
 // ServeHTTP
-func (s *apiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (as *apiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" && r.Method != "GET" {
 		writePureError(w, 405, "api: POST or GET method required, received "+r.Method)
 		return
@@ -301,7 +302,7 @@ func (s *apiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	serviceSpec, methodSpec, errGet := s.services.get(method)
+	serviceSpec, methodSpec, errGet := as.services.get(method)
 	if errGet != nil {
 		codecReq.Responser.WriteError(w, 400, errGet)
 		return
