@@ -1,27 +1,27 @@
 package vapi
 
 import (
-	"sync"
-	"reflect"
-	"unicode/utf8"
-	"unicode"
+	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
-	"github.com/riftbit/httprouterc"
-	"context"
-	"github.com/justinas/alice"
-	"github.com/gorilla/schema"
-)
+	"sync"
+	"unicode"
+	"unicode/utf8"
 
+	"github.com/gorilla/schema"
+	"github.com/justinas/alice"
+	"github.com/riftbit/httprouterc"
+)
 
 var (
 	Server *ApiServer
 	// Precompute the reflect.Type of error and http.Request
-	typeOfError   = reflect.TypeOf((*error)(nil)).Elem()
-	typeOfRequest = reflect.TypeOf((*http.Request)(nil)).Elem()
+	typeOfError     = reflect.TypeOf((*error)(nil)).Elem()
+	typeOfRequest   = reflect.TypeOf((*http.Request)(nil)).Elem()
 	baseMiddleWares = alice.New()
-	schemaDecoder = schema.NewDecoder()
+	schemaDecoder   = schema.NewDecoder()
 )
 
 // serviceMap is a registry for services.
@@ -45,10 +45,8 @@ type serviceMethod struct {
 
 type ApiServer struct {
 	services *serviceMap
-	router *httprouterc.Router
+	router   *httprouterc.Router
 }
-
-
 
 func (as *ApiServer) AddRoute(method string, uri string, h http.Handler) {
 	as.router.Handle(method, uri, wrapHandler(h))
@@ -62,13 +60,11 @@ func (as *ApiServer) GetRouter() *httprouterc.Router {
 	return as.router
 }
 
-
 func (as *ApiServer) ListenAndServe(addr string) error {
 	return http.ListenAndServe(addr, as.router)
 }
 
-
-func Wrap(h http.HandlerFunc, m ...alice.Constructor ) httprouterc.Handle {
+func Wrap(h http.HandlerFunc, m ...alice.Constructor) httprouterc.Handle {
 	b := baseMiddleWares.Extend(alice.New(m...))
 	return wrapHandler(b.ThenFunc(h))
 }
@@ -80,7 +76,6 @@ func wrapHandler(h http.Handler) httprouterc.Handle {
 	}
 }
 
-
 func ApiHandler(w http.ResponseWriter, r *http.Request) {
 
 	if strings.Contains(r.Context().Value("method").(string), ".") != true {
@@ -89,7 +84,7 @@ func ApiHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	partsMethod := strings.SplitN(r.Context().Value("method").(string), ".", 2)
-	if len(partsMethod) < 2  {
+	if len(partsMethod) < 2 {
 		WritePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
 		return
 	}
@@ -111,7 +106,6 @@ func Initialize(baseURL string, middlewares ...alice.Constructor) {
 	Server = newApiServer(baseURL, middlewares...)
 }
 
-
 // NewServer returns a new RPC server.
 func newApiServer(baseURL string, middlewares ...alice.Constructor) *ApiServer {
 	router := httprouterc.New()
@@ -120,10 +114,9 @@ func newApiServer(baseURL string, middlewares ...alice.Constructor) *ApiServer {
 
 	return &ApiServer{
 		services: new(serviceMap),
-		router: router,
+		router:   router,
 	}
 }
-
 
 // HasMethod returns true if the given method is registered.
 //
@@ -155,7 +148,6 @@ func (s *ApiServer) RegisterService(receiver interface{}, name string) error {
 	return s.services.register(receiver, name)
 }
 
-
 // get returns a registered service given a method name.
 //
 // The method name uses a dotted notation as in "Service.Method".
@@ -180,8 +172,6 @@ func (m *serviceMap) get(method string) (*service, *serviceMethod, error) {
 	return service, serviceMethod, nil
 }
 
-
-
 // get returns a registered service given a method name.
 //
 // The method name uses a dotted notation as in "Service.Method".
@@ -191,7 +181,6 @@ func (m *serviceMap) GetAll() (map[string]*service, error) {
 	m.mutex.Unlock()
 	return service, nil
 }
-
 
 // register adds a new service using reflection to extract its methods.
 func (m *serviceMap) register(rcvr interface{}, name string) error {
@@ -288,7 +277,6 @@ func isExportedOrBuiltin(t reflect.Type) bool {
 	return isExported(t.Name()) || t.PkgPath() == ""
 }
 
-
 // ServeHTTP
 func (s *ApiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" && r.Method != "GET" {
@@ -353,10 +341,8 @@ func (s *ApiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 func WritePureError(w http.ResponseWriter, status int, msg string) {
 	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprint(w, msg)
 }
-

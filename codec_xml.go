@@ -1,10 +1,9 @@
 package vapi
 
 import (
-	"net/http"
 	"encoding/xml"
+	"net/http"
 )
-
 
 // serverResponse represents a JSON-RPC response returned by the server.
 type serverResponseXML struct {
@@ -20,16 +19,15 @@ type serverResponseXML struct {
 }
 
 type ResultXML struct {
-	XMLName   xml.Name     `xml:"response"`
-	Response  interface{}  `xml:"result"`
-
+	XMLName  xml.Name    `xml:"response"`
+	Response interface{} `xml:"result"`
 }
 
 type ErrorXML struct {
-	XMLName   xml.Name     `xml:"error"`
-	Code      int          `xml:"error_code"`
-	Message   string       `xml:"error_msg"` /* required */ // A Primitive or Structured value that contains additional information about the error.
-	Data      interface{}  `xml:"error_data,omitempty"` /* optional */
+	XMLName xml.Name    `xml:"error"`
+	Code    int         `xml:"error_code"`
+	Message string      `xml:"error_msg"`            /* required */ // A Primitive or Structured value that contains additional information about the error.
+	Data    interface{} `xml:"error_data,omitempty"` /* optional */
 }
 
 func (e *ErrorXML) Error() string {
@@ -49,7 +47,7 @@ func (c *serverResponseXML) WriteError(w http.ResponseWriter, status int, errIn 
 }
 
 func (c *serverResponseXML) writeServerResponse(w http.ResponseWriter, status int, res interface{}) {
-	b, err := xml.MarshalIndent(res,"", " ")
+	b, err := xml.MarshalIndent(res, "", " ")
 	if err != nil {
 		WritePureError(w, 500, err.Error())
 	}

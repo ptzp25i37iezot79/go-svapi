@@ -1,10 +1,10 @@
 package vapi
 
 import (
-	"net/http"
-	"net/url"
 	"errors"
 	"io"
+	"net/http"
+	"net/url"
 )
 
 // ----------------------------------------------------------------------------
@@ -12,7 +12,7 @@ import (
 // ----------------------------------------------------------------------------
 
 // Codec creates a CodecRequest to process each request.
-type Codec struct {}
+type Codec struct{}
 
 // NewRequest returns a CodecRequest.
 func (c *CodecRequest) NewRequest(r *http.Request, cResp codecServerResponseInterface) *CodecRequest {
@@ -26,10 +26,9 @@ func (c *CodecRequest) NewRequest(r *http.Request, cResp codecServerResponseInte
 // CodecRequest decodes and encodes a single request.
 type CodecRequest struct {
 	Responser codecServerResponseInterface
-	request *serverRequest
-	err     error
+	request   *serverRequest
+	err       error
 }
-
 
 // ----------------------------------------------------------------------------
 // Request and Response
@@ -40,7 +39,6 @@ type serverRequest struct {
 	Method string
 	Params url.Values
 }
-
 
 // newCodecRequest returns a new CodecRequest.
 func newCodecRequest(r *http.Request, cResp codecServerResponseInterface) *CodecRequest {
@@ -64,9 +62,8 @@ func newCodecRequest(r *http.Request, cResp codecServerResponseInterface) *Codec
 	} else if r.Method == "GET" {
 		req.Params = r.URL.Query()
 	}
-	return &CodecRequest{Responser: cResp,request: req, err: errr}
+	return &CodecRequest{Responser: cResp, request: req, err: errr}
 }
-
 
 // Method returns the RPC method for the current request.
 //
@@ -89,7 +86,6 @@ func (c *CodecRequest) ReadRequest(args interface{}) error {
 	}
 	return c.err
 }
-
 
 type codecServerResponseInterface interface {
 	WriteResponse(http.ResponseWriter, interface{})
