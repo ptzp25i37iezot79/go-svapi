@@ -3,13 +3,6 @@ language: go
 os:
   - linux
 
-addons:
-  apt:
-    packages:
-    - pandoc 
-  apt_packages:
-    - pandoc
-
 go:
   - 1.7.4
   - tip
