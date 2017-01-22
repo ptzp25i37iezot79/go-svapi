@@ -17,6 +17,32 @@ func TestInitialize(t *testing.T) {
 
 	Server.RegisterService(new(APITodo), "todo")
 	server := httptest.NewServer(Server.GetRouter())
+
+	resp, err := http.Get(server.URL + "/404")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 404 {
+		t.Fatalf("Received non-404 response: %d\n", resp.StatusCode)
+	}
+
+	//resp, err = http.Get(server.URL + "/v1/todo.get")
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	//if resp.StatusCode != 404 {
+	//	t.Fatalf("Received non-200 response: %d\n", resp.StatusCode)
+	//}
+
+	//expected := fmt.Sprintf("Visitor count: %d.", i)
+	//actual, err := ioutil.ReadAll(resp.Body)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	//if expected != string(actual) {
+	//	t.Errorf("Expected the message '%s'\n", expected)
+	//}
+
 	defer server.Close()
 }
 
