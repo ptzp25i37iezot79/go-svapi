@@ -54,10 +54,10 @@ func newCodecRequest(r *http.Request, cResp codecServerResponseInterface) *Codec
 			errr = errors.New("Wrong Content-Type in request")
 		} else {
 			err := r.ParseForm()
-			req.Params = r.PostForm
 			if err != io.EOF {
 				errr = err
 			}
+			req.Params = r.PostForm
 		}
 	} else if r.Method == "GET" {
 		req.Params = r.URL.Query()
