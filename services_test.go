@@ -1,124 +1,137 @@
 package vapi
 
 import (
+	"bytes"
+	"context"
+	"fmt"
+	"io/ioutil"
+	"net"
 	"net/http"
-	"os"
 	"testing"
 
-	"encoding/xml"
-	"io/ioutil"
-	"net/http/httptest"
+	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/fasthttputil"
 )
 
-var server *httptest.Server
+var inMemoryServer *fasthttputil.InmemoryListener
 
-func TestInitialize(t *testing.T) {
-	os.Setenv("TESTING", "YES")
+var apiService *VAPI
+var apiClient http.Client
 
-	Initialize("/v1", middlewareLog)
-}
+// DemoAPI area
+type DemoAPI struct{}
 
-func TestRegisterService(t *testing.T) {
-	Server.RegisterService(new(APITodo), "todo")
-}
-
-func TestRunService(t *testing.T) {
-	server = httptest.NewServer(Server.GetRouter())
-}
-
-func TestGetNotFoundError(t *testing.T) {
-	resp, err := http.Get(server.URL + "/404")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != 404 {
-		t.Fatalf("Received non-404 response: %d\n", resp.StatusCode)
-	}
-}
-
-func TestGetSimpleRequestWOParams(t *testing.T) {
-	resp, err := http.Get(server.URL + "/v1/todo.get")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != 200 {
-		t.Fatalf("Received non-200 response: %d\n", resp.StatusCode)
-	}
-	actual, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := "{\"response\":{\"title\":\"\",\"body\":\"\",\"tags\":null}}"
-	if expected != string(actual) {
-		t.Errorf("Expected the message '%s'\n", expected)
-	}
-}
-
-func TestGetSimpleRequestWithParams(t *testing.T) {
-	resp, err := http.Get(server.URL + "/v1/todo.get?title=Title_For_Todo&body=This_is_a_body_for_todo&tags[]=tag1&tags[]=tag2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != 200 {
-		t.Fatalf("Received non-200 response: %d\n", resp.StatusCode)
-	}
-	actualURLParams, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expectedURLParams := "{\"response\":{\"title\":\"Title_For_Todo\",\"body\":\"This_is_a_body_for_todo\",\"tags\":[\"tag1\",\"tag2\"]}}"
-	if expectedURLParams != string(actualURLParams) {
-		t.Errorf("Expected the message '%s'\n", expectedURLParams)
-	}
-}
-
-func TestGetSimpleRequestWithUnknownParams(t *testing.T) {
-	resp, err := http.Get(server.URL + "/v1/todo.get?unknown_param=OMFGERROR&title=Title_For_Todo&body=This_is_a_body_for_todo&tags[]=tag1&tags[]=tag2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != 400 {
-		t.Fatalf("Received non-400 response: %d\n", resp.StatusCode)
-	}
-	actualWrongURLParams, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expectedWrongURLParams := "{\"error\":{\"error_code\":444,\"error_msg\":\"schema: invalid path \\\"unknown_param\\\"\"}}"
-	if expectedWrongURLParams != string(actualWrongURLParams) {
-		t.Errorf("Expected the message '%s'\n", expectedWrongURLParams)
-	}
-}
-
-func TestStopServer(t *testing.T) {
-	server.Close()
-}
-
-/*
-	ADDITIONAL FUNCTIONS FOR TESTS
-*/
-func middlewareLog(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		//It will print RawQuery of every request
-		//log.Printf("URL Raw Query %v", r.URL.RawQuery)
-		next.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
-}
-
-type APITodo struct{}
-
-type APITodoArg struct {
-	XMLName xml.Name `xml:"todo" json:"-"`
-	Title   string   `schema:"title" json:"title" xml:"title"`
-	Body    string   `schema:"body" json:"body" xml:"body"`
-	Tags    []string `schema:"tags[]" json:"tags" xml:"tags"`
-}
-
-func (a *APITodo) Get(r *http.Request, Args *APITodoArg, Reply *APITodoArg) error {
-	Reply.Tags = Args.Tags
-	Reply.Title = Args.Title
-	Reply.Body = Args.Body
+// Test Method to test
+func (h *DemoAPI) Test(ctx *fasthttp.RequestCtx, args *struct{ ID string }, reply *struct{ LogID string }) error {
+	reply.LogID = args.ID
 	return nil
+}
+
+// ErrorTest Method to test
+func (h *DemoAPI) ErrorTest(ctx *fasthttp.RequestCtx, args *struct{ ID string }, reply *struct{ LogID string }) error {
+
+	errs := &Error{
+		ErrorHTTPCode: 333,
+		ErrorCode:     606,
+		ErrorMessage:  "Test Wrong answer",
+		Data:          nil,
+	}
+
+	return errs
+}
+
+func TestNewServer(t *testing.T) {
+	apiService = NewServer()
+}
+
+func TestVAPI_RegisterService(t *testing.T) {
+	err := apiService.RegisterService(new(DemoAPI), "demo")
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestVAPI_GetServiceMap(t *testing.T) {
+	tt, err := apiService.GetServiceMap()
+	if err != nil {
+		t.Error(err)
+	}
+	if len(tt) == 0 {
+		t.Error(fmt.Errorf("size of service map is lower that expected! Shoud be 1"))
+	}
+}
+
+func Test(t *testing.T) {
+	inMemoryServer = fasthttputil.NewInmemoryListener()
+
+	apiClient = http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return inMemoryServer.Dial()
+			},
+		},
+	}
+
+	reqHandler := func(ctx *fasthttp.RequestCtx) {
+		switch string(ctx.Path()) {
+		case "/api/demo.Test":
+			apiService.CallAPI(ctx, "demo.Test")
+		case "/api/demo.ErrorTest":
+			apiService.CallAPI(ctx, "demo.ErrorTest")
+		default:
+			ctx.Error(fmt.Sprintf("Unsupported path: %s", ctx.Path()), fasthttp.StatusNotFound)
+		}
+	}
+
+	go fasthttp.Serve(inMemoryServer, reqHandler)
+}
+
+func TestVAPI_CallAPI(t *testing.T) {
+
+	var jsonStr = []byte(`{"ID":"onomnomnom"}`)
+
+	req, err := http.NewRequest("POST", "http://test/api/demo.Test", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Error(err)
+	}
+	res, err := apiClient.Do(req)
+
+	if res.StatusCode != 200 {
+		t.Error(fmt.Sprintf("wrong answer http status code received: %d", res.StatusCode))
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(body) != "{\"response\":{\"LogID\":\"onomnomnom\"}}" {
+
+		t.Error(fmt.Sprintf("wrong answer received: %s", body))
+	}
+}
+
+func TestVAPI_CallAPI_WrongAnswer(t *testing.T) {
+
+	var jsonStr = []byte(`{"ID":"onomnomnom"}`)
+
+	req, err := http.NewRequest("POST", "http://test/api/demo.ErrorTest", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Error(err)
+	}
+	res, err := apiClient.Do(req)
+
+	if res.StatusCode != 333 {
+		t.Error(fmt.Sprintf("wrong answer http status code received: %d", res.StatusCode))
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(body) != "{\"error\":{\"error_code\":606,\"error_msg\":\"Test Wrong answer\",\"data\":null}}" {
+
+		t.Error(fmt.Sprintf("wrong answer received: %s", body))
+	}
 }

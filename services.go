@@ -1,142 +1,38 @@
 package vapi
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 	"reflect"
 	"strings"
 	"sync"
-	"unicode"
-	"unicode/utf8"
 
-	"github.com/gorilla/schema"
-	"github.com/justinas/alice"
-	"github.com/riftbit/httprouterc"
-)
-
-type keyCtx int
-
-const (
-	//KeyMethodID contains ID for context to get method name
-	KeyMethodID keyCtx = iota
+	"github.com/valyala/fasthttp"
 )
 
 var (
-	//Server main variable
-	Server *apiServer
-	// Precompute the reflect.Type of error and http.Request
-	typeOfError     = reflect.TypeOf((*error)(nil)).Elem()
-	typeOfRequest   = reflect.TypeOf((*http.Request)(nil)).Elem()
-	baseMiddleWares = alice.New()
-	schemaDecoder   = schema.NewDecoder()
+	// Precompute the reflect.Type of error and fasthttp.RequestCtx
+	typeOfError   = reflect.TypeOf((*error)(nil)).Elem()
+	typeOfRequest = reflect.TypeOf((*fasthttp.RequestCtx)(nil)).Elem()
 )
 
-// serviceMap is a registry for services.
-type serviceMap struct {
+// VAPI - main structure
+type VAPI struct {
 	mutex    sync.Mutex
-	services map[string]*service
+	services map[string]bool
+	methods  map[string]*serviceMethod
 }
 
-type service struct {
-	name     string                    // name of service
-	rcvr     reflect.Value             // receiver of methods for the service
-	rcvrType reflect.Type              // type of the receiver
-	methods  map[string]*serviceMethod // registered methods
-}
-
+// serviceMethod - sub struct
 type serviceMethod struct {
+	//name      string         // name of service
+	rcvr      reflect.Value  // receiver of methods for the service
+	rcvrType  reflect.Type   // type of the receiver
 	method    reflect.Method // receiver method
 	argsType  reflect.Type   // type of the request argument
 	replyType reflect.Type   // type of the response argument
 }
 
-type apiServer struct {
-	services *serviceMap
-	router   *httprouterc.Router
-}
-
-//AddRoute add route with http.Handler
-func (as *apiServer) AddRoute(method string, uri string, h http.Handler) {
-	as.router.Handle(method, uri, wrapHandler(h))
-}
-
-//AddRouteF add route with http.HandlerFunc
-func (as *apiServer) AddRouteF(method string, uri string, h http.HandlerFunc) {
-	as.router.Handle(method, uri, wrap(h))
-}
-
-//GetRouter get router for http.ListenAndServe
-func (as *apiServer) GetRouter() *httprouterc.Router {
-	return as.router
-}
-
-func wrap(h http.HandlerFunc, m ...alice.Constructor) httprouterc.Handle {
-	b := baseMiddleWares.Extend(alice.New(m...))
-	return wrapHandler(b.ThenFunc(h))
-}
-
-func wrapHandler(h http.Handler) httprouterc.Handle {
-	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		r = r.WithContext(ctx)
-		h.ServeHTTP(w, r)
-	}
-}
-
-func apiHandler(w http.ResponseWriter, r *http.Request) {
-
-	if strings.Contains(r.Context().Value(httprouterc.KeyParamID).(string), ".") != true {
-		writePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
-		return
-	}
-
-	partsMethod := strings.SplitN(r.Context().Value(httprouterc.KeyParamID).(string), ".", 2)
-	if len(partsMethod) < 2 {
-		writePureError(w, 404, "api: Method not found: "+r.Context().Value("method").(string))
-		return
-	}
-	partsMethod[1] = strings.Title(partsMethod[1])
-	method := strings.Join(partsMethod, ".")
-
-	ctx := context.WithValue(r.Context(), KeyMethodID, method)
-	r = r.WithContext(ctx)
-
-	if Server.HasMethod(method) == false {
-		writePureError(w, 404, "api: Method not found: "+method)
-		return
-	}
-
-	Server.ServeHTTP(w, r)
-}
-
-//Initialize init basic variables with params and middlewares
-func Initialize(baseURL string, middlewares ...alice.Constructor) {
-	Server = newAPIServer(baseURL, middlewares...)
-}
-
-// NewServer returns a new RPC server.
-func newAPIServer(baseURL string, middlewares ...alice.Constructor) *apiServer {
-	router := httprouterc.New()
-	router.GET(baseURL+"/:method", wrap(apiHandler, middlewares...))
-	router.POST(baseURL+"/:method", wrap(apiHandler, middlewares...))
-
-	return &apiServer{
-		services: new(serviceMap),
-		router:   router,
-	}
-}
-
-// HasMethod returns true if the given method is registered.
-//
-// The method uses a dotted notation as in "Service.Method".
-func (as *apiServer) HasMethod(method string) bool {
-	if _, _, err := as.services.get(method); err == nil {
-		return true
-	}
-	return false
-}
-
-// RegisterService adds a new service to the server.
+// RegisterService adds a new service to the api server.
 //
 // The name parameter is optional: if empty it will be inferred from
 // the receiver type name.
@@ -146,98 +42,79 @@ func (as *apiServer) HasMethod(method string) bool {
 //    - The receiver is exported (begins with an upper case letter) or local
 //      (defined in the package registering the service).
 //    - The method name is exported.
-//    - The method has three arguments: *http.Request, *args, *reply.
+//    - The method has three arguments: *fasthttp.RequestCtx, *args, *reply.
 //    - All three arguments are pointers.
 //    - The second and third arguments are exported or local.
 //    - The method has return type error.
 //
 // All other methods are ignored.
-func (as *apiServer) RegisterService(receiver interface{}, name string) error {
-	return as.services.register(receiver, name)
-}
-
-// get returns a registered service given a method name.
-//
-// The method name uses a dotted notation as in "Service.Method".
-func (m *serviceMap) get(method string) (*service, *serviceMethod, error) {
-	parts := strings.Split(method, ".")
-	if len(parts) != 2 {
-		err := fmt.Errorf("api: service/method request ill-formed: %q", method)
-		return nil, nil, err
-	}
-	m.mutex.Lock()
-	service := m.services[parts[0]]
-	m.mutex.Unlock()
-	if service == nil {
-		err := fmt.Errorf("api: can't find service %q", method)
-		return nil, nil, err
-	}
-	serviceMethod := service.methods[parts[1]]
-	if serviceMethod == nil {
-		err := fmt.Errorf("api: can't find method %q", method)
-		return nil, nil, err
-	}
-	return service, serviceMethod, nil
-}
-
-// GetAll returns an all registered services
-//
-// The method name uses a dotted notation as in "Service.Method".
-func (m *serviceMap) GetAll() (map[string]*service, error) {
-	m.mutex.Lock()
-	service := m.services
-	m.mutex.Unlock()
-	return service, nil
+func (as *VAPI) RegisterService(receiver interface{}, name string) error {
+	return as.register(receiver, name)
 }
 
 // register adds a new service using reflection to extract its methods.
-func (m *serviceMap) register(rcvr interface{}, name string) error {
-	// Setup service.
-	s := &service{
-		name:     name,
-		rcvr:     reflect.ValueOf(rcvr),
-		rcvrType: reflect.TypeOf(rcvr),
-		methods:  make(map[string]*serviceMethod),
-	}
-	if name == "" {
-		s.name = reflect.Indirect(s.rcvr).Type().Name()
-		if !isExported(s.name) {
-			return fmt.Errorf("api: type %q is not exported", s.name)
+func (as *VAPI) register(rcvr interface{}, serviceName string) error {
+
+	rcvrValue := reflect.ValueOf(rcvr)
+	rcvrType := reflect.TypeOf(rcvr)
+
+	if serviceName == "" {
+		serviceName = reflect.Indirect(rcvrValue).Type().Name()
+
+		if !isExported(serviceName) {
+			return fmt.Errorf("vapi: type %q is not exported", serviceName)
 		}
 	}
-	if s.name == "" {
-		return fmt.Errorf("api: no service name for type %q",
-			s.rcvrType.String())
-	}
-	// Setup methods.
-	for i := 0; i < s.rcvrType.NumMethod(); i++ {
-		method := s.rcvrType.Method(i)
 
+	if serviceName == "" {
+		return fmt.Errorf("vapi: no service name for type %q", rcvrType.String())
+	}
+
+	as.mutex.Lock()
+	defer as.mutex.Unlock()
+
+	if _, ok := as.services[serviceName]; ok {
+		return fmt.Errorf("vapi: service already defined: %q", serviceName)
+	}
+
+	as.services[serviceName] = true
+
+	addedMethodCounter := 0
+
+	// Setup methods.
+	for i := 0; i < rcvrType.NumMethod(); i++ {
+
+		method := rcvrType.Method(i)
 		mtype := method.Type
+
 		// Method must be exported.
 		if method.PkgPath != "" {
 			continue
 		}
-		// Method needs four ins: receiver, ps httprouter.Params, *http.Request, *args, *reply.
+
+		// Method needs four ins: receiver, *fasthttp.RequestCtx, *args, *reply.
 		if mtype.NumIn() != 4 {
 			continue
 		}
 
-		// First argument must be a pointer and must be http.Request.
+		// First argument must be a pointer and must be fasthttp.RequestCtx.
 		reqType := mtype.In(1)
 		if reqType.Kind() != reflect.Ptr || reqType.Elem() != typeOfRequest {
 			continue
 		}
+
 		// Second argument must be a pointer and must be exported.
 		args := mtype.In(2)
 		if args.Kind() != reflect.Ptr || !isExportedOrBuiltin(args) {
 			continue
 		}
+
 		// Third argument must be a pointer and must be exported.
 		reply := mtype.In(3)
 		if reply.Kind() != reflect.Ptr || !isExportedOrBuiltin(reply) {
 			continue
 		}
+
 		// Method needs one out: error.
 		if mtype.NumOut() != 1 {
 			continue
@@ -246,111 +123,116 @@ func (m *serviceMap) register(rcvr interface{}, name string) error {
 			continue
 		}
 
-		s.methods[method.Name] = &serviceMethod{
+		as.methods[fmt.Sprintf("%s.%s", serviceName, method.Name)] = &serviceMethod{
+			rcvr:      rcvrValue,
+			rcvrType:  rcvrType,
 			method:    method,
 			argsType:  args.Elem(),
 			replyType: reply.Elem(),
 		}
-	}
-	if len(s.methods) == 0 {
-		return fmt.Errorf("api: %q has no exported methods of suitable type",
-			s.name)
-	}
-	// Add to the map.
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
 
-	if m.services == nil {
-		m.services = make(map[string]*service)
-	} else if _, ok := m.services[s.name]; ok {
-		return fmt.Errorf("api: service already defined: %q", s.name)
+		addedMethodCounter++
 	}
-	m.services[s.name] = s
+
+	if addedMethodCounter == 0 {
+		return fmt.Errorf("vapi: %q has no exported methods of suitable type", serviceName)
+	}
+
 	return nil
 }
 
-// isExported returns true of a string is an exported (upper case) name.
-func isExported(name string) bool {
-	runez, _ := utf8.DecodeRuneInString(name)
-	return unicode.IsUpper(runez)
+// get returns a registered service method by given name.
+//
+// The method name uses a dotted notation as in "Service.Method".
+func (as *VAPI) get(serviceWithMethod string) (*serviceMethod, error) {
+
+	parts := strings.Split(serviceWithMethod, ".")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("vapi: service/method request ill-formed: %q", serviceWithMethod)
+	}
+
+	if _, ok := as.services[parts[0]]; !ok {
+		return nil, fmt.Errorf("vapi: service not found: %q", parts[0])
+	}
+
+	// todo check do we need mutex here or not! not sure!
+	serviceMethod, okMethod := as.methods[serviceWithMethod]
+	// todo check do we need unmutex here or not! not sure!
+
+	if !okMethod {
+		return nil, fmt.Errorf("vapi: can't find method %q", parts[1])
+	}
+
+	return serviceMethod, nil
 }
 
-// isExportedOrBuiltin returns true if a type is exported or a builtin.
-func isExportedOrBuiltin(t reflect.Type) bool {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	// PkgPath will be non-empty even for an exported type,
-	// so we need to check the type name as well.
-	return isExported(t.Name()) || t.PkgPath() == ""
+// GetServiceMap returns an json api schema
+// todo realize this function
+func (as *VAPI) GetServiceMap() (map[string]*serviceMethod, error) {
+	methods := as.methods
+	return methods, nil
 }
 
-// ServeHTTP
-func (as *apiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" && r.Method != "GET" {
-		writePureError(w, 405, "api: POST or GET method required, received "+r.Method)
-		return
-	}
+// CallAPI call api method and process it.
+// Modifying body after this function not recommended
+func (as *VAPI) CallAPI(ctx *fasthttp.RequestCtx, method string) {
 
-	var selectedCodec codecServerResponseInterface
-	if strings.HasSuffix(r.URL.Query().Get("format"), "xml") {
-		selectedCodec = &serverResponseXML{}
-	} else {
-		selectedCodec = &serverResponseJSON{}
-	}
+	var errAPI *Error
+	var err error
 
-	var codec CodecRequest
-	// Create a new codec request.
-	codecReq := codec.NewRequest(r, selectedCodec)
-	// Get service method to be called.
-	method, errMethod := codecReq.Method()
-	if errMethod != nil {
-		writePureError(w, 400, errMethod.Error())
-		return
-	}
+	methodSpec, err := as.get(method)
 
-	serviceSpec, methodSpec, errGet := as.services.get(method)
-	if errGet != nil {
-		codecReq.Responser.WriteError(w, 400, errGet)
+	if err != nil {
+		errAPI = &Error{
+			ErrorHTTPCode: 404,
+			ErrorCode:     0,
+			ErrorMessage:  err.Error(),
+		}
+		WriteResponse(ctx, errAPI.ErrorHTTPCode, ServerResponse{Error: errAPI})
 		return
 	}
 
 	// Decode the args.
 	args := reflect.New(methodSpec.argsType)
-	if errRead := codecReq.ReadRequest(args.Interface()); errRead != nil {
-		codecReq.Responser.WriteError(w, 400, errRead)
+	err = readRequestParams(ctx, args.Interface())
+	if err != nil {
+		errAPI = &Error{
+			ErrorHTTPCode: 400,
+			ErrorCode:     0,
+			ErrorMessage:  err.Error(),
+		}
+		WriteResponse(ctx, errAPI.ErrorHTTPCode, ServerResponse{Error: errAPI})
 		return
 	}
 
 	// Call the service method.
 	reply := reflect.New(methodSpec.replyType)
 	errValue := methodSpec.method.Func.Call([]reflect.Value{
-		serviceSpec.rcvr,
-		reflect.ValueOf(r),
+		methodSpec.rcvr,
+		reflect.ValueOf(ctx),
 		args,
 		reply,
 	})
 
-	// Cast the result to error if needed.
-	var errResult error
+	var errResult *Error
 	errInter := errValue[0].Interface()
 	if errInter != nil {
-		errResult = errInter.(error)
+		errResult = errInter.(*Error)
 	}
 
-	// Prevents Internet Explorer from MIME-sniffing a response away
-	// from the declared content-type
-	w.Header().Set("x-content-type-options", "nosniff")
-	// Encode the response.
-	if errResult == nil {
-		codecReq.Responser.WriteResponse(w, reply.Interface())
-	} else {
-		codecReq.Responser.WriteError(w, 400, errResult)
+	if errResult != nil {
+		WriteResponse(ctx, errResult.ErrorHTTPCode, ServerResponse{Error: errResult})
+		return
 	}
+
+	WriteResponse(ctx, 200, ServerResponse{Response: reply.Interface()})
+	return
 }
 
-func writePureError(w http.ResponseWriter, status int, msg string) {
-	w.WriteHeader(status)
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprint(w, msg)
+// NewServer returns a new RPC server.
+func NewServer() *VAPI {
+	return &VAPI{
+		services: make(map[string]bool),
+		methods:  make(map[string]*serviceMethod),
+	}
 }
