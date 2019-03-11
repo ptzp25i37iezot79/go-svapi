@@ -124,7 +124,7 @@ func (as *VAPI) register(rcvr interface{}, serviceName string) error {
 		}
 
 		// Method out should be an error type.
-		if returnType := mtype.Out(0); returnType.Elem() != typeOfError {
+		if returnType := mtype.Out(0); returnType != typeOfError {
 			continue
 		}
 

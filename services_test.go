@@ -22,13 +22,13 @@ var apiClient http.Client
 type DemoAPI struct{}
 
 // Test Method to test
-func (h *DemoAPI) Test(ctx *fasthttp.RequestCtx, args *struct{ ID string }, reply *struct{ LogID string }) error {
-	reply.LogID = args.ID
+func (h *DemoAPI) Test(ctx *fasthttp.RequestCtx, Args *TestArgs, Reply *TestReply) error {
+	Reply.ID = Args.ID
 	return nil
 }
 
 // ErrorTest Method to test
-func (h *DemoAPI) ErrorTest(ctx *fasthttp.RequestCtx, args *struct{ ID string }, reply *struct{ LogID string }) error {
+func (h *DemoAPI) ErrorTest(ctx *fasthttp.RequestCtx, Args *TestArgs, Reply *TestReply) error {
 
 	errs := &Error{
 		ErrorHTTPCode: 333,
@@ -105,8 +105,7 @@ func TestVAPI_CallAPI(t *testing.T) {
 		t.Error(err)
 	}
 
-	if string(body) != "{\"response\":{\"LogID\":\"onomnomnom\"}}" {
-
+	if string(body) != "{\"response\":{\"ID\":\"onomnomnom\"}}" {
 		t.Error(fmt.Sprintf("wrong answer received: %s", body))
 	}
 }

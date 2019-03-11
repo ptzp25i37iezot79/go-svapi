@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 )
 
-//easyjson:json
-var null = json.RawMessage([]byte("null"))
-
 // ----------------------------------------------------------------------------
 // Request and Response
 // ----------------------------------------------------------------------------
@@ -26,9 +23,6 @@ type ServerResponse struct {
 	// As per spec the member will be omitted if there was no error.
 	Error *Error `json:"error,omitempty"`
 }
-
-// EmptyResponse empty response
-type EmptyResponse struct{}
 
 //easyjson:json
 type Error struct {
@@ -48,4 +42,14 @@ type Error struct {
 
 func (e *Error) Error() string {
 	return e.ErrorMessage
+}
+
+//easyjson:json
+type TestArgs struct {
+	ID string
+}
+
+//easyjson:json
+type TestReply struct {
+	ID string
 }
