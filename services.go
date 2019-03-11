@@ -1,6 +1,7 @@
 package vapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -12,12 +13,14 @@ import (
 var (
 	// Precompute the reflect.Type of error and fasthttp.RequestCtx
 	typeOfError   = reflect.TypeOf((*error)(nil)).Elem()
+	typeOfArgs    = reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
+	typeOfReply   = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
 	typeOfRequest = reflect.TypeOf((*fasthttp.RequestCtx)(nil)).Elem()
 )
 
 // VAPI - main structure
 type VAPI struct {
-	mutex    sync.Mutex
+	mutex    sync.RWMutex
 	services map[string]bool
 	methods  map[string]*serviceMethod
 }
@@ -70,8 +73,8 @@ func (as *VAPI) register(rcvr interface{}, serviceName string) error {
 		return fmt.Errorf("vapi: no service name for type %q", rcvrType.String())
 	}
 
-	as.mutex.Lock()
-	defer as.mutex.Unlock()
+	as.mutex.RLock()
+	defer as.mutex.RUnlock()
 
 	if _, ok := as.services[serviceName]; ok {
 		return fmt.Errorf("vapi: service already defined: %q", serviceName)
@@ -103,15 +106,15 @@ func (as *VAPI) register(rcvr interface{}, serviceName string) error {
 			continue
 		}
 
-		// Second argument must be a pointer and must be exported.
+		// Second argument is Args must be a pointer, must be exported and must implement Unmarshaller interface.
 		args := mtype.In(2)
-		if args.Kind() != reflect.Ptr || !isExportedOrBuiltin(args) {
+		if args.Kind() != reflect.Ptr || !isExportedOrBuiltin(args) || !args.Implements(typeOfArgs) {
 			continue
 		}
 
-		// Third argument must be a pointer and must be exported.
+		// Third argument must be a pointer, must be exported and must implement Marshaller interface.
 		reply := mtype.In(3)
-		if reply.Kind() != reflect.Ptr || !isExportedOrBuiltin(reply) {
+		if reply.Kind() != reflect.Ptr || !isExportedOrBuiltin(reply) || !reply.Implements(typeOfReply) {
 			continue
 		}
 
@@ -119,7 +122,9 @@ func (as *VAPI) register(rcvr interface{}, serviceName string) error {
 		if mtype.NumOut() != 1 {
 			continue
 		}
-		if returnType := mtype.Out(0); returnType != typeOfError {
+
+		// Method out should be an error type.
+		if returnType := mtype.Out(0); returnType.Elem() != typeOfError {
 			continue
 		}
 
@@ -155,9 +160,9 @@ func (as *VAPI) get(serviceWithMethod string) (*serviceMethod, error) {
 		return nil, fmt.Errorf("vapi: service not found: %q", parts[0])
 	}
 
-	// todo check do we need mutex here or not! not sure!
+	as.mutex.Lock()
 	serviceMethod, okMethod := as.methods[serviceWithMethod]
-	// todo check do we need unmutex here or not! not sure!
+	as.mutex.Unlock()
 
 	if !okMethod {
 		return nil, fmt.Errorf("vapi: can't find method %q", parts[1])
@@ -177,31 +182,37 @@ func (as *VAPI) GetServiceMap() (map[string]*serviceMethod, error) {
 // Modifying body after this function not recommended
 func (as *VAPI) CallAPI(ctx *fasthttp.RequestCtx, method string) {
 
-	var errAPI *Error
-	var err error
-
 	methodSpec, err := as.get(method)
 
+	srvResponse := responsePool.Get().(*ServerResponse)
+	defer responsePool.Put(srvResponse)
+
 	if err != nil {
-		errAPI = &Error{
-			ErrorHTTPCode: 404,
-			ErrorCode:     0,
-			ErrorMessage:  err.Error(),
-		}
-		WriteResponse(ctx, errAPI.ErrorHTTPCode, ServerResponse{Error: errAPI})
+
+		errAPI := errorsPool.Get().(*Error)
+		defer errorsPool.Put(errAPI)
+		errAPI.ErrorHTTPCode = fasthttp.StatusNotFound
+		errAPI.ErrorCode = 0
+		errAPI.ErrorMessage = err.Error()
+
+		srvResponse.Error = errAPI
+		WriteResponse(ctx, errAPI.ErrorHTTPCode, *srvResponse)
 		return
 	}
 
 	// Decode the args.
 	args := reflect.New(methodSpec.argsType)
-	err = readRequestParams(ctx, args.Interface())
+	err = args.Interface().(json.Unmarshaler).UnmarshalJSON(ctx.Request.Body())
 	if err != nil {
-		errAPI = &Error{
-			ErrorHTTPCode: 400,
-			ErrorCode:     0,
-			ErrorMessage:  err.Error(),
-		}
-		WriteResponse(ctx, errAPI.ErrorHTTPCode, ServerResponse{Error: errAPI})
+
+		errAPI := errorsPool.Get().(*Error)
+		defer errorsPool.Put(errAPI)
+		errAPI.ErrorHTTPCode = fasthttp.StatusInternalServerError
+		errAPI.ErrorCode = 0
+		errAPI.ErrorMessage = err.Error()
+
+		srvResponse.Error = errAPI
+		WriteResponse(ctx, errAPI.ErrorHTTPCode, *srvResponse)
 		return
 	}
 
@@ -214,18 +225,32 @@ func (as *VAPI) CallAPI(ctx *fasthttp.RequestCtx, method string) {
 		reply,
 	})
 
-	var errResult *Error
 	errInter := errValue[0].Interface()
 	if errInter != nil {
-		errResult = errInter.(*Error)
-	}
+		errResult := errorsPool.Get().(*Error)
+		defer errorsPool.Put(errResult)
 
-	if errResult != nil {
-		WriteResponse(ctx, errResult.ErrorHTTPCode, ServerResponse{Error: errResult})
+		srvResponse.Error = errInter.(*Error)
+		WriteResponse(ctx, srvResponse.Error.ErrorHTTPCode, *srvResponse)
 		return
 	}
 
-	WriteResponse(ctx, 200, ServerResponse{Response: reply.Interface()})
+	repBytes, err := reply.Interface().(json.Marshaler).MarshalJSON()
+	if err != nil {
+
+		errAPI := errorsPool.Get().(*Error)
+		defer errorsPool.Put(errAPI)
+		errAPI.ErrorHTTPCode = fasthttp.StatusInternalServerError
+		errAPI.ErrorCode = 0
+		errAPI.ErrorMessage = err.Error()
+
+		srvResponse.Error = errAPI
+		WriteResponse(ctx, errAPI.ErrorHTTPCode, *srvResponse)
+		return
+	}
+
+	srvResponse.Response = repBytes
+	WriteResponse(ctx, fasthttp.StatusOK, *srvResponse)
 	return
 }
 

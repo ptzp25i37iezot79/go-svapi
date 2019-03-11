@@ -1,11 +1,12 @@
 package vapi
 
 import (
+	"fmt"
 	"reflect"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/pquerna/ffjson/ffjson"
 	"github.com/valyala/fasthttp"
 )
 
@@ -25,17 +26,34 @@ func isExportedOrBuiltin(t reflect.Type) bool {
 	return isExported(t.Name()) || t.PkgPath() == ""
 }
 
-// ReadRequestParams getting request parametrs
-func readRequestParams(ctx *fasthttp.RequestCtx, args interface{}) error {
-	return ffjson.Unmarshal(ctx.Request.Body(), args)
-}
-
 // WriteResponse write response to client with status code and server response struct
 func WriteResponse(ctx *fasthttp.RequestCtx, status int, resp ServerResponse) {
-	body, _ := ffjson.Marshal(resp)
-	ctx.SetBody(body)
-	ffjson.Pool(body)
+	body, err := resp.MarshalJSON()
+	if err != nil {
+		ctx.SetBody([]byte(fmt.Sprintf(`{"error": {"error_code": 0, "error_msg": "can't marshal response", "dara": "%s"}}`, err.Error())))
+		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
+	} else {
+		ctx.SetBody(body)
+		ctx.SetStatusCode(status)
+	}
 	ctx.Response.Header.Set("x-content-type-options", "nosniff")
 	ctx.SetContentType("application/json; charset=utf-8")
-	ctx.SetStatusCode(status)
+}
+
+var errorsPool = sync.Pool{
+	New: func() interface{} {
+		// The Pool's New function should generally only return pointer
+		// types, since a pointer can be put into the return interface
+		// value without an allocation:
+		return new(Error)
+	},
+}
+
+var responsePool = sync.Pool{
+	New: func() interface{} {
+		// The Pool's New function should generally only return pointer
+		// types, since a pointer can be put into the return interface
+		// value without an allocation:
+		return new(ServerResponse)
+	},
 }

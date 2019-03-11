@@ -1,9 +1,12 @@
+//go:generate easyjson $GOFILE
+
 package vapi
 
 import (
 	"encoding/json"
 )
 
+//easyjson:json
 var null = json.RawMessage([]byte("null"))
 
 // ----------------------------------------------------------------------------
@@ -11,11 +14,12 @@ var null = json.RawMessage([]byte("null"))
 // ----------------------------------------------------------------------------
 
 // ServerResponse represents a JSON-RPC response returned by the server.
+//easyjson:json
 type ServerResponse struct {
 	// The Object that was returned by the invoked method. This must be null
 	// in case there was an error invoking the method.
 	// As per spec the member will be omitted if there was an error.
-	Response interface{} `json:"response,omitempty"`
+	Response json.RawMessage `json:"response,omitempty"`
 
 	// An Error object if there was an error invoking the method. It must be
 	// null if there was no error.
@@ -26,6 +30,7 @@ type ServerResponse struct {
 // EmptyResponse empty response
 type EmptyResponse struct{}
 
+//easyjson:json
 type Error struct {
 	// A Number that indicates the error type that occurred.
 	ErrorHTTPCode int `json:"-"`
