@@ -120,8 +120,8 @@ func TestVAPI_CallAPI_WrongAnswer(t *testing.T) {
 	}
 	ress, err := apiClient.Do(req)
 
-	if res.StatusCode != 333 {
-		t.Error(fmt.Sprintf("wrong answer http status code received: %d", res.StatusCode))
+	if ress.StatusCode != 333 {
+		t.Error(fmt.Sprintf("wrong answer http status code received: %d", ress.StatusCode))
 	}
 
 	bodyS, err := ioutil.ReadAll(ress.Body)
