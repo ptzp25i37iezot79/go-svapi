@@ -14,11 +14,9 @@ import (
 )
 
 var inMemoryServer *fasthttputil.InmemoryListener
-var inMemoryServerWithError *fasthttputil.InmemoryListener
 
 var apiService *VAPI
 var apiClient http.Client
-var apiClientWithError http.Client
 
 // DemoAPI area
 type DemoAPI struct{}
@@ -27,19 +25,6 @@ type DemoAPI struct{}
 func (h *DemoAPI) Test(ctx *fasthttp.RequestCtx, Args *TestArgs, Reply *TestReply) error {
 	Reply.ID = Args.ID
 	return nil
-}
-
-// ErrorTest Method to test
-func (h *DemoAPI) ErrorTest(ctx *fasthttp.RequestCtx, Args *TestArgs, Reply *TestReply) error {
-
-	errs := &Error{
-		ErrorHTTPCode: fasthttp.StatusFailedDependency,
-		ErrorCode:     606,
-		ErrorMessage:  "Test Wrong answer",
-		Data:          nil,
-	}
-
-	return errs
 }
 
 func TestNewServer(t *testing.T) {
@@ -65,20 +50,11 @@ func TestVAPI_GetServiceMap(t *testing.T) {
 
 func Test(t *testing.T) {
 	inMemoryServer = fasthttputil.NewInmemoryListener()
-	inMemoryServerWithError = fasthttputil.NewInmemoryListener()
 
 	apiClient = http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return inMemoryServer.Dial()
-			},
-		},
-	}
-
-	apiClientWithError = http.Client{
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return inMemoryServerWithError.Dial()
 			},
 		},
 	}
@@ -95,33 +71,6 @@ func Test(t *testing.T) {
 	}
 
 	go fasthttp.Serve(inMemoryServer, reqHandler)
-	go fasthttp.Serve(inMemoryServerWithError, reqHandler)
-}
-
-func TestVAPI_CallAPI_WrongAnswer(t *testing.T) {
-
-	var jsonStr = []byte(`{"ID":"onomnomnom"}`)
-
-	req, err := http.NewRequest("POST", "http://testerr/api/demo.ErrorTest", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Error(err)
-	}
-	ress, err := apiClientWithError.Do(req)
-
-	if ress.StatusCode != fasthttp.StatusFailedDependency {
-		t.Error(fmt.Sprintf("wrong answer http status code received: %d", ress.StatusCode))
-	}
-
-	bodyS, err := ioutil.ReadAll(ress.Body)
-	if err != nil {
-		t.Error(err)
-	}
-
-	bodyStr := string(bodyS)
-
-	if bodyStr != "{\"error\":{\"error_code\":606,\"error_msg\":\"Test Wrong answer\",\"data\":null}}" {
-		t.Error(fmt.Sprintf("wrong answer received: %s", bodyStr))
-	}
 }
 
 func TestVAPI_CallAPI(t *testing.T) {
