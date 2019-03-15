@@ -118,19 +118,18 @@ func TestVAPI_CallAPI_WrongAnswer(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	res, err := apiClient.Do(req)
+	ress, err := apiClient.Do(req)
 
 	if res.StatusCode != 333 {
 		t.Error(fmt.Sprintf("wrong answer http status code received: %d", res.StatusCode))
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	bodyS, err := ioutil.ReadAll(ress.Body)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if string(body) != "{\"error\":{\"error_code\":606,\"error_msg\":\"Test Wrong answer\",\"data\":null}}" {
-
-		t.Error(fmt.Sprintf("wrong answer received: %s", body))
+	if string(bodyS) != "{\"error\":{\"error_code\":606,\"error_msg\":\"Test Wrong answer\",\"data\":null}}" {
+		t.Error(fmt.Sprintf("wrong answer received: %s", bodyS))
 	}
 }
