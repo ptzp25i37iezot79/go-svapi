@@ -173,7 +173,7 @@ func (as *VAPI) get(serviceWithMethod string) (*serviceMethod, error) {
 
 // GetServiceMap returns an json api schema
 // todo realize this function
-func (as *VAPI) GetServiceMap() (map[string]*serviceMethod, error) {
+func (as *VAPI) GetServiceMap() (map[string]interface, error) {
 	methods := as.methods
 	return methods, nil
 }
