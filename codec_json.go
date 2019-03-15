@@ -24,6 +24,7 @@ type ServerResponse struct {
 	Error *Error `json:"error,omitempty"`
 }
 
+//Error ...
 //easyjson:json
 type Error struct {
 	// A Number that indicates the error type that occurred.
@@ -44,11 +45,13 @@ func (e *Error) Error() string {
 	return e.ErrorMessage
 }
 
+//TestArgs args for tests
 //easyjson:json
 type TestArgs struct {
 	ID string
 }
 
+//TestReply reply for tests
 //easyjson:json
 type TestReply struct {
 	ID string
