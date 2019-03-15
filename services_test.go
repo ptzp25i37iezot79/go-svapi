@@ -56,8 +56,8 @@ func TestVAPI_GetServiceMap(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if len(tt) == 0 {
-		t.Error(fmt.Errorf("size of service map is lower that expected! Shoud be 1"))
+	if len(tt) != 0 {
+		t.Error(fmt.Errorf("size of service map is higher that expected! Shoud be 0"))
 	}
 }
 
