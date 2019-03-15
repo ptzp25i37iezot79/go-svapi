@@ -14,9 +14,11 @@ import (
 )
 
 var inMemoryServer *fasthttputil.InmemoryListener
+var inMemoryServerWithError *fasthttputil.InmemoryListener
 
 var apiService *VAPI
 var apiClient http.Client
+var apiClientWithError http.Client
 
 // DemoAPI area
 type DemoAPI struct{}
@@ -63,11 +65,20 @@ func TestVAPI_GetServiceMap(t *testing.T) {
 
 func Test(t *testing.T) {
 	inMemoryServer = fasthttputil.NewInmemoryListener()
+	inMemoryServerWithError = fasthttputil.NewInmemoryListener()
 
 	apiClient = http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return inMemoryServer.Dial()
+			},
+		},
+	}
+
+	apiClientWithError = http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return inMemoryServerWithError.Dial()
 			},
 		},
 	}
@@ -84,17 +95,18 @@ func Test(t *testing.T) {
 	}
 
 	go fasthttp.Serve(inMemoryServer, reqHandler)
+	go fasthttp.Serve(inMemoryServerWithError, reqHandler)
 }
 
 func TestVAPI_CallAPI_WrongAnswer(t *testing.T) {
 
 	var jsonStr = []byte(`{"ID":"onomnomnom"}`)
 
-	req, err := http.NewRequest("POST", "http://test/api/demo.ErrorTest", bytes.NewBuffer(jsonStr))
+	req, err := http.NewRequest("POST", "http://testerr/api/demo.ErrorTest", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		t.Error(err)
 	}
-	ress, err := apiClient.Do(req)
+	ress, err := apiClientWithError.Do(req)
 
 	if ress.StatusCode != fasthttp.StatusFailedDependency {
 		t.Error(fmt.Sprintf("wrong answer http status code received: %d", ress.StatusCode))
