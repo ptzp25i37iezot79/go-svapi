@@ -31,7 +31,7 @@ func (h *DemoAPI) Test(ctx *fasthttp.RequestCtx, Args *TestArgs, Reply *TestRepl
 func (h *DemoAPI) ErrorTest(ctx *fasthttp.RequestCtx, Args *TestArgs, Reply *TestReply) error {
 
 	errs := &Error{
-		ErrorHTTPCode: 333,
+		ErrorHTTPCode: fasthttp.StatusFailedDependency,
 		ErrorCode:     606,
 		ErrorMessage:  "Test Wrong answer",
 		Data:          nil,
@@ -86,6 +86,32 @@ func Test(t *testing.T) {
 	go fasthttp.Serve(inMemoryServer, reqHandler)
 }
 
+func TestVAPI_CallAPI_WrongAnswer(t *testing.T) {
+
+	var jsonStr = []byte(`{"ID":"onomnomnom"}`)
+
+	req, err := http.NewRequest("POST", "http://test/api/demo.ErrorTest", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Error(err)
+	}
+	ress, err := apiClient.Do(req)
+
+	if ress.StatusCode != fasthttp.StatusFailedDependency {
+		t.Error(fmt.Sprintf("wrong answer http status code received: %d", ress.StatusCode))
+	}
+
+	bodyS, err := ioutil.ReadAll(ress.Body)
+	if err != nil {
+		t.Error(err)
+	}
+
+	bodyStr := string(bodyS)
+
+	if bodyStr != "{\"error\":{\"error_code\":606,\"error_msg\":\"Test Wrong answer\",\"data\":null}}" {
+		t.Error(fmt.Sprintf("wrong answer received: %s", bodyStr))
+	}
+}
+
 func TestVAPI_CallAPI(t *testing.T) {
 
 	var jsonStr = []byte(`{"ID":"onomnomnom"}`)
@@ -107,29 +133,5 @@ func TestVAPI_CallAPI(t *testing.T) {
 
 	if string(body) != "{\"response\":{\"ID\":\"onomnomnom\"}}" {
 		t.Error(fmt.Sprintf("wrong answer received: %s", body))
-	}
-}
-
-func TestVAPI_CallAPI_WrongAnswer(t *testing.T) {
-
-	var jsonStr = []byte(`{"ID":"onomnomnom"}`)
-
-	req, err := http.NewRequest("POST", "http://test/api/demo.ErrorTest", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Error(err)
-	}
-	ress, err := apiClient.Do(req)
-
-	if ress.StatusCode != 333 {
-		t.Error(fmt.Sprintf("wrong answer http status code received: %d", ress.StatusCode))
-	}
-
-	bodyS, err := ioutil.ReadAll(ress.Body)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if string(bodyS) != "{\"error\":{\"error_code\":606,\"error_msg\":\"Test Wrong answer\",\"data\":null}}" {
-		t.Error(fmt.Sprintf("wrong answer received: %s", bodyS))
 	}
 }
