@@ -1,13 +1,19 @@
-package vapi
+package svapi
 
 import (
 	"fmt"
-	"reflect"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/valyala/fasthttp"
 )
+
+const ContentTypeJson = "application/json; charset=utf-8"
+const XmlContentTypeXml = "application/xml; charset=utf-8"
+const XmlContentTypeXmlRss = "application/rss+xml; charset=utf-8"
+const XmlContentTypeXmlAtom = "application/atom+xml; charset=utf-8"
+const ContentTypeHtml = "text/html; charset=utf-8"
+const ContentTypeProtobuf = "application/protobuf"
 
 // isExported returns true of a string is an exported (upper case) name.
 func isExported(name string) bool {
@@ -15,26 +21,23 @@ func isExported(name string) bool {
 	return unicode.IsUpper(runez)
 }
 
-// isExportedOrBuiltin returns true if a type is exported or a builtin.
-func isExportedOrBuiltin(t reflect.Type) bool {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	// PkgPath will be non-empty even for an exported type,
-	// so we need to check the type name as well.
-	return isExported(t.Name()) || t.PkgPath() == ""
+// SendPushFunction type that define function that used to send push
+type ErrorHandlerFunction func(ctx *fasthttp.RequestCtx, err error)
+
+func defaultErrorHandler(ctx *fasthttp.RequestCtx, err error) {
+	WriteResponseString(ctx, fasthttp.StatusInternalServerError, ContentTypeHtml, fmt.Sprintf("go-svapi error: %v", err))
 }
 
-// WriteResponse write response to client with status code and server response struct
-func WriteResponse(ctx *fasthttp.RequestCtx, status int, resp ServerResponse) {
-	body, err := resp.MarshalJSON()
-	if err != nil {
-		ctx.SetBody([]byte(fmt.Sprintf(`{"error": {"error_code": 0, "error_msg": "can't marshal response", "dara": "%s"}}`, err.Error())))
-		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
-	} else {
-		ctx.SetBody(body)
-		ctx.SetStatusCode(status)
-	}
-	ctx.Response.Header.Set("x-content-type-options", "nosniff")
-	ctx.SetContentType("application/json; charset=utf-8")
+// WriteResponseBytes write response to client with status code, body and content type
+func WriteResponseBytes(ctx *fasthttp.RequestCtx, status int, contentType string, resp []byte) {
+	ctx.SetStatusCode(status)
+	ctx.SetContentType(contentType)
+	ctx.SetBody(resp)
+}
+
+// WriteResponseString write response to client with status code, body and content type
+func WriteResponseString(ctx *fasthttp.RequestCtx, status int, contentType string, resp string) {
+	ctx.SetStatusCode(status)
+	ctx.SetContentType(contentType)
+	ctx.SetBodyString(resp)
 }

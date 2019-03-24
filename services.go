@@ -1,4 +1,4 @@
-package vapi
+package svapi
 
 import (
 	"fmt"
@@ -12,25 +12,22 @@ import (
 var (
 	// Precompute the reflect.Type of error and fasthttp.RequestCtx
 	typeOfError   = reflect.TypeOf((*error)(nil)).Elem()
-	typeOfArgs    = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
-	typeOfReply   = reflect.TypeOf((*Marshaler)(nil)).Elem()
 	typeOfRequest = reflect.TypeOf((*fasthttp.RequestCtx)(nil)).Elem()
 )
 
-// VAPI - main structure
-type VAPI struct {
-	mutex    sync.RWMutex
-	services map[string]bool
-	methods  map[string]*serviceMethod
+// SVAPI - main structure
+type SVAPI struct {
+	mutex         sync.RWMutex
+	services      map[string]bool
+	errorCallback ErrorHandlerFunction
+	methods       map[string]*serviceMethod
 }
 
 // serviceMethod - sub struct
 type serviceMethod struct {
-	rcvr      reflect.Value  // receiver of methods for the service
-	rcvrType  reflect.Type   // type of the receiver
-	method    reflect.Method // receiver method
-	argsType  reflect.Type   // type of the request argument
-	replyType reflect.Type   // type of the response argument
+	rcvr     reflect.Value  // receiver of methods for the service
+	rcvrType reflect.Type   // type of the receiver
+	method   reflect.Method // receiver method
 }
 
 // RegisterService adds a new service to the api server.
@@ -49,12 +46,12 @@ type serviceMethod struct {
 //    - The method has return type error.
 //
 // All other methods are ignored.
-func (as *VAPI) RegisterService(receiver interface{}, name string) error {
+func (as *SVAPI) RegisterService(receiver interface{}, name string) error {
 	return as.register(receiver, name)
 }
 
 // register adds a new service using reflection to extract its methods.
-func (as *VAPI) register(rcvr interface{}, serviceName string) error {
+func (as *SVAPI) register(rcvr interface{}, serviceName string) error {
 
 	rcvrValue := reflect.ValueOf(rcvr)
 	rcvrType := reflect.TypeOf(rcvr)
@@ -93,26 +90,14 @@ func (as *VAPI) register(rcvr interface{}, serviceName string) error {
 			continue
 		}
 
-		// Method needs four ins: receiver, *fasthttp.RequestCtx, *args, *reply.
-		if mtype.NumIn() != 4 {
+		// Method needs four ins: receiver, *fasthttp.RequestCtx.
+		if mtype.NumIn() != 2 {
 			continue
 		}
 
 		// First argument must be a pointer and must be fasthttp.RequestCtx.
 		reqType := mtype.In(1)
 		if reqType.Kind() != reflect.Ptr || reqType.Elem() != typeOfRequest {
-			continue
-		}
-
-		// Second argument is Args must be a pointer, must be exported and must implement Unmarshaller interface.
-		args := mtype.In(2)
-		if args.Kind() != reflect.Ptr || !isExportedOrBuiltin(args) || !args.Implements(typeOfArgs) {
-			continue
-		}
-
-		// Third argument must be a pointer, must be exported and must implement Marshaller interface.
-		reply := mtype.In(3)
-		if reply.Kind() != reflect.Ptr || !isExportedOrBuiltin(reply) || !reply.Implements(typeOfReply) {
 			continue
 		}
 
@@ -127,11 +112,9 @@ func (as *VAPI) register(rcvr interface{}, serviceName string) error {
 		}
 
 		as.methods[fmt.Sprintf("%s.%s", serviceName, method.Name)] = &serviceMethod{
-			rcvr:      rcvrValue,
-			rcvrType:  rcvrType,
-			method:    method,
-			argsType:  args.Elem(),
-			replyType: reply.Elem(),
+			rcvr:     rcvrValue,
+			rcvrType: rcvrType,
+			method:   method,
 		}
 
 		addedMethodCounter++
@@ -147,7 +130,7 @@ func (as *VAPI) register(rcvr interface{}, serviceName string) error {
 // get returns a registered service method by given name.
 //
 // The method name uses a dotted notation as in "Service.Method".
-func (as *VAPI) get(serviceWithMethod string) (*serviceMethod, error) {
+func (as *SVAPI) get(serviceWithMethod string) (*serviceMethod, error) {
 
 	parts := strings.Split(serviceWithMethod, ".")
 	if len(parts) != 2 {
@@ -171,88 +154,37 @@ func (as *VAPI) get(serviceWithMethod string) (*serviceMethod, error) {
 
 // GetServiceMap returns an json api schema
 // todo realize this function
-func (as *VAPI) GetServiceMap() (map[string]string, error) {
+func (as *SVAPI) GetServiceMap() (map[string]string, error) {
 	return nil, nil
 }
 
 // CallAPI call api method and process it.
 // Modifying body after this function not recommended
-func (as *VAPI) CallAPI(ctx *fasthttp.RequestCtx, method string) {
+func (as *SVAPI) CallAPI(ctx *fasthttp.RequestCtx, method string) {
 
 	methodSpec, err := as.get(method)
 
-	srvResponse := acquireResponse()
-	defer releaseResponse(srvResponse)
-
 	if err != nil {
-
-		errAPI := acquireError()
-		errAPI.ErrorHTTPCode = fasthttp.StatusNotFound
-		errAPI.ErrorCode = 0
-		errAPI.ErrorMessage = err.Error()
-
-		srvResponse.Error = errAPI
-		WriteResponse(ctx, errAPI.ErrorHTTPCode, *srvResponse)
-		releaseError(errAPI)
-		return
-	}
-
-	// Decode the args.
-	args := reflect.New(methodSpec.argsType)
-	err = args.Interface().(Unmarshaler).UnmarshalJSON(ctx.Request.Body())
-	if err != nil {
-
-		errAPI := acquireError()
-		errAPI.ErrorHTTPCode = fasthttp.StatusInternalServerError
-		errAPI.ErrorCode = 0
-		errAPI.ErrorMessage = err.Error()
-
-		srvResponse.Error = errAPI
-		WriteResponse(ctx, errAPI.ErrorHTTPCode, *srvResponse)
-		releaseError(errAPI)
+		as.errorCallback(ctx, err)
 		return
 	}
 
 	// Call the service method.
-	reply := reflect.New(methodSpec.replyType)
-	errValue := methodSpec.method.Func.Call([]reflect.Value{
-		methodSpec.rcvr,
-		reflect.ValueOf(ctx),
-		args,
-		reply,
-	})
+	errValue := methodSpec.method.Func.Call([]reflect.Value{methodSpec.rcvr, reflect.ValueOf(ctx)})
 
 	errInter := errValue[0].Interface()
 	if errInter != nil {
-		// TODO FIX THIS LOGIC!!!
-		srvResponse.Error = errInter.(*Error)
-		WriteResponse(ctx, srvResponse.Error.ErrorHTTPCode, *srvResponse)
+		as.errorCallback(ctx, errInter.(error))
 		return
 	}
 
-	repBytes, err := reply.Interface().(Marshaler).MarshalJSON()
-	if err != nil {
-
-		errAPI := acquireError()
-		errAPI.ErrorHTTPCode = fasthttp.StatusInternalServerError
-		errAPI.ErrorCode = 0
-		errAPI.ErrorMessage = err.Error()
-
-		srvResponse.Error = errAPI
-		WriteResponse(ctx, errAPI.ErrorHTTPCode, *srvResponse)
-		releaseError(errAPI)
-		return
-	}
-
-	srvResponse.Response = repBytes
-	WriteResponse(ctx, fasthttp.StatusOK, *srvResponse)
-	return
 }
 
 // NewServer returns a new RPC server.
-func NewServer() *VAPI {
-	return &VAPI{
-		services: make(map[string]bool),
-		methods:  make(map[string]*serviceMethod),
+func NewServer() *SVAPI {
+	return &SVAPI{
+		services:      make(map[string]bool),
+		methods:       make(map[string]*serviceMethod),
+		errorCallback: defaultErrorHandler,
 	}
 }
