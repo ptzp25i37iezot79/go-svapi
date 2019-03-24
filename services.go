@@ -11,8 +11,8 @@ import (
 
 var (
 	// Precompute the reflect.Type of error and fasthttp.RequestCtx
-	typeOfError   = reflect.TypeOf((*error)(nil)).Elem()
 	typeOfRequest = reflect.TypeOf((*fasthttp.RequestCtx)(nil)).Elem()
+	typeOfError   = reflect.TypeOf((*error)(nil)).Elem()
 )
 
 // SVAPI - main structure
@@ -41,10 +41,9 @@ type serviceMethod struct {
 //    - The receiver is exported (begins with an upper case letter) or local
 //      (defined in the package registering the service).
 //    - The method name is exported.
-//    - The method has three arguments: *fasthttp.RequestCtx, *args, *reply.
-//    - All three arguments are pointers.
-//    - The second and third arguments are exported or local.
-//    - The method has return type error.
+//    - The method has one argument: *fasthttp.RequestCtx.
+//    - All arguments are pointers.
+//    - The method has return type error that will be processed by error handler method.
 //
 // All other methods are ignored.
 func (as *SVAPI) RegisterService(receiver interface{}, name string) error {
