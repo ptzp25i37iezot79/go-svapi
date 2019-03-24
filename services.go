@@ -60,19 +60,19 @@ func (as *SVAPI) register(rcvr interface{}, serviceName string) error {
 		serviceName = reflect.Indirect(rcvrValue).Type().Name()
 
 		if !isExported(serviceName) {
-			return fmt.Errorf("vapi: type %q is not exported", serviceName)
+			return fmt.Errorf("svapi: type %q is not exported", serviceName)
 		}
 	}
 
 	if serviceName == "" {
-		return fmt.Errorf("vapi: no service name for type %q", rcvrType.String())
+		return fmt.Errorf("svapi: no service name for type %q", rcvrType.String())
 	}
 
 	as.mutex.RLock()
 	defer as.mutex.RUnlock()
 
 	if _, ok := as.services[serviceName]; ok {
-		return fmt.Errorf("vapi: service already defined: %q", serviceName)
+		return fmt.Errorf("svapi: service already defined: %q", serviceName)
 	}
 
 	as.services[serviceName] = true
@@ -121,7 +121,7 @@ func (as *SVAPI) register(rcvr interface{}, serviceName string) error {
 	}
 
 	if addedMethodCounter == 0 {
-		return fmt.Errorf("vapi: %q has no exported methods of suitable type", serviceName)
+		return fmt.Errorf("svapi: %q has no exported methods of suitable type", serviceName)
 	}
 
 	return nil
