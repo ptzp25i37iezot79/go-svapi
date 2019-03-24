@@ -28,7 +28,7 @@ type DemoAPI struct{}
 
 // TestXml Method to test xml content type
 func (h *DemoAPI) TestXml(ctx *fasthttp.RequestCtx) error {
-	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeXML, "ok")
+	WriteResponseBytes(ctx, fasthttp.StatusOK, ContentTypeXML, []byte("ok"))
 	return nil
 }
 
