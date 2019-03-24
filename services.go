@@ -182,7 +182,7 @@ func (as *SVAPI) CallAPI(ctx *fasthttp.RequestCtx, method string) {
 
 }
 
-// NewServer returns a new RPC server.
+// NewServer returns a new API server.
 func NewServer() *SVAPI {
 	return &SVAPI{
 		services:      make(map[string]bool),
@@ -192,7 +192,7 @@ func NewServer() *SVAPI {
 	}
 }
 
-// SetErrorHandlerFunction allows to set custom error processing for api functions
+// SetErrorHandlerFunction allows to set custom error handler for api function returned error
 func (as *SVAPI) SetErrorHandlerFunction(errHndl ErrorHandlerFunction) {
 	as.errorCallback = errHndl
 }
