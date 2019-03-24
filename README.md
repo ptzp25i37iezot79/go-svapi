@@ -1,5 +1,5 @@
 # go-svapi
-vk styled api package for easy api developing
+package for easy api developing based on fasthttp
 
 [Website](https://www.riftbit.com) | [Contributing](https://www.riftbit.com/How-to-Contribute)
 
@@ -20,74 +20,5 @@ go get -u github.com/riftbit/go-svapi
 This is a minimal example.
 
 ```go
-import (
-	"net/http"
-	"log"
-	"github.com/riftbit/go-svapi"
-)
-
-func main() {
-	//Initializing VAPI (required)
-	vapi.Initialize("/v1") // This method can receive middlewares as additional params
-
-	//Add Apis to VAPI
-	vapi.Server.RegisterService(new(ApiTodo), "todo")
-
-	//Add Routes to VAPI
-	vapi.Server.AddRoute("GET", "/", http.FileServer(http.Dir("./views/")))
-	vapi.Server.AddRoute("GET", "/uploads", http.FileServer(http.Dir("./uploads/")))
-	vapi.Server.AddRoute("GET", "/static/js/", http.FileServer(http.Dir("./static/js/")))
-	vapi.Server.AddRoute("GET", "/static/css/", http.FileServer(http.Dir("./static/css/")))
-	vapi.Server.AddRoute("GET", "/static/img/", http.FileServer(http.Dir("./static/img/")))
-
-	log.Println("Started server on port",":8080")
-	log.Fatal(http.ListenAndServe(":8080", vapi.Server.GetRouter()))
-}
-
-type ApiTodo struct {}
-
-type ApiTodo_arg struct {
-	XMLName    xml.Name    `xml:"todo" json:"-"`
-	Title      string      `json:"title" xml:"title"`
-	Body       string      `schema:"-" json:"body" xml:"body"`
-	Tags       []string    `schema:"tags[]" json:"tags" xml:"tags"`
-}
-
-func (self *ApiTodo) Get(r *http.Request, Args *ApiTodo_arg, Reply *ApiTodo_arg) error {
-	Reply.Tags=Args.Tags
-	Reply.Title=Args.Title
-	Reply.Body=Args.Body
-	return nil
-}
-
-```
-
-*Initialize* method can receive additional middlewares as params
-
-```go
-    vapi.Initialize("/v1", middleware_log)
-```
-
-And middleware_log example is:
-
-```go
-func middleware_log(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("URL Raw Query %v", r.URL.RawQuery)
-		next.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
-}
-```
-
-And make request by curl (for json output)
-
-```
-curl -X POST -d 'title=New Todo' -d 'body=This is a new todo' -d 'tags[]=Todo' -d 'tags[]=Tag' http://127.0.0.1:8080/v1/todo.get
-```
-
-Or for XML output
-
-```
-curl -X POST -d 'title=New Todo' -d 'body=This is a new todo' -d 'tags[]=Todo' -d 'tags[]=Tag' http://127.0.0.1:8080/v1/todo.get?format=xml
+in dev
 ```
