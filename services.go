@@ -134,11 +134,11 @@ func (as *SVAPI) get(serviceWithMethod string) (*serviceMethod, error) {
 
 	parts := strings.Split(serviceWithMethod, ".")
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("vapi: service/method request ill-formed: %q", serviceWithMethod)
+		return nil, fmt.Errorf("svapi: service/method request ill-formed: %q", serviceWithMethod)
 	}
 
 	if _, ok := as.services[parts[0]]; !ok {
-		return nil, fmt.Errorf("vapi: service not found: %q", parts[0])
+		return nil, fmt.Errorf("svapi: service not found: %q", parts[0])
 	}
 
 	as.mutex.Lock()
@@ -146,7 +146,7 @@ func (as *SVAPI) get(serviceWithMethod string) (*serviceMethod, error) {
 	as.mutex.Unlock()
 
 	if !okMethod {
-		return nil, fmt.Errorf("vapi: can't find method %q", parts[1])
+		return nil, fmt.Errorf("svapi: can't find method %q", parts[1])
 	}
 
 	return serviceMethod, nil
@@ -187,4 +187,8 @@ func NewServer() *SVAPI {
 		methods:       make(map[string]*serviceMethod),
 		errorCallback: defaultErrorHandler,
 	}
+}
+
+func (as *SVAPI) SetErrorHandlerFunction(errHndl ErrorHandlerFunction) {
+	as.errorCallback = errHndl
 }
