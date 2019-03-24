@@ -48,6 +48,9 @@ func acquireError() *Error {
 // It is forbidden accessing resp and/or its' members after returning
 // it to response pool.
 func releaseError(err *Error) {
-	*err = Error{}
+	err.ErrorCode = 0
+	err.ErrorMessage = ""
+	err.ErrorHTTPCode = 0
+	err.Data = nil
 	errorsPool.Put(err)
 }
