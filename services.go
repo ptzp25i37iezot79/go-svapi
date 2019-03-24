@@ -152,10 +152,12 @@ func (as *SVAPI) get(serviceWithMethod string) (*serviceMethod, error) {
 	return serviceMethod, nil
 }
 
-// GetServiceMap returns an json api schema
-// todo realize this function
-func (as *SVAPI) GetServiceMap() (map[string]string, error) {
-	return nil, nil
+// GetServiceMap returns an api methods list
+func (as *SVAPI) GetServiceMap() (res []string) {
+	for key := range as.methods {
+		res = append(res, key)
+	}
+	return
 }
 
 // CallAPI call api method and process it.
@@ -189,6 +191,7 @@ func NewServer() *SVAPI {
 	}
 }
 
+// SetErrorHandlerFunction allows to set custom error processing for api functions
 func (as *SVAPI) SetErrorHandlerFunction(errHndl ErrorHandlerFunction) {
 	as.errorCallback = errHndl
 }

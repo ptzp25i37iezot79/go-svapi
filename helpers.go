@@ -9,20 +9,20 @@ import (
 )
 
 const (
-	// ContentTypeJson Content type for JSON
-	ContentTypeJson = "application/json; charset=utf-8"
+	// ContentTypeJSON Content type for JSON
+	ContentTypeJSON string = "application/json; charset=utf-8"
 
-	// ContentTypeXml Content type for XML
-	ContentTypeXml = "application/xml; charset=utf-8"
+	// ContentTypeXML Content type for XML
+	ContentTypeXML = "application/xml; charset=utf-8"
 
-	// ContentTypeRss Content type for RSS
-	ContentTypeRssXml = "application/rss+xml; charset=utf-8"
+	// ContentTypeRSS Content type for RSS
+	ContentTypeRssXML = "application/rss+xml; charset=utf-8"
 
-	// ContentTypeAtom Content type for ATOM
-	ContentTypeAtomXml = "application/atom+xml; charset=utf-8"
+	// ContentTypeAtomXML Content type for ATOM
+	ContentTypeAtomXML = "application/atom+xml; charset=utf-8"
 
-	// ContentTypeHtml Content type for HTML
-	ContentTypeHtml = "text/html; charset=utf-8"
+	// ContentTypeHTML Content type for HTML
+	ContentTypeHTML = "text/html; charset=utf-8"
 
 	// ContentTypeProtobuf Content type for ProtoBuf
 	ContentTypeProtobuf = "application/protobuf"
@@ -38,7 +38,7 @@ func isExported(name string) bool {
 type ErrorHandlerFunction func(ctx *fasthttp.RequestCtx, err error)
 
 func defaultErrorHandler(ctx *fasthttp.RequestCtx, err error) {
-	WriteResponseString(ctx, fasthttp.StatusInternalServerError, ContentTypeHtml, fmt.Sprintf("svapi: error %v", err))
+	WriteResponseString(ctx, fasthttp.StatusInternalServerError, ContentTypeHTML, fmt.Sprintf("svapi: error %v", err))
 }
 
 // WriteResponseBytes write response to client with status code, body and content type

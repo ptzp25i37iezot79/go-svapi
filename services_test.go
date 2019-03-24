@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttputil"
 )
@@ -21,7 +20,7 @@ var apiService *SVAPI
 var apiClient http.Client
 
 func testErrorHandler(ctx *fasthttp.RequestCtx, err error) {
-	WriteResponseString(ctx, fasthttp.StatusConflict, ContentTypeJson, fmt.Sprintf(`{"error": "%s"}`, err.Error()))
+	WriteResponseString(ctx, fasthttp.StatusConflict, ContentTypeJSON, fmt.Sprintf(`{"error": "%s"}`, err.Error()))
 }
 
 // DemoAPI area
@@ -29,31 +28,31 @@ type DemoAPI struct{}
 
 // TestXml Method to test xml content type
 func (h *DemoAPI) TestXml(ctx *fasthttp.RequestCtx) error {
-	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeXml, "ok")
+	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeXML, "ok")
 	return nil
 }
 
 // TestRss Method to test rss content type
 func (h *DemoAPI) TestRss(ctx *fasthttp.RequestCtx) error {
-	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeRssXml, "ok")
+	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeRssXML, "ok")
 	return nil
 }
 
 // TestAtom Method to test content atom type
 func (h *DemoAPI) TestAtom(ctx *fasthttp.RequestCtx) error {
-	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeAtomXml, "ok")
+	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeAtomXML, "ok")
 	return nil
 }
 
 // TestJson Method to test content json type
 func (h *DemoAPI) TestJson(ctx *fasthttp.RequestCtx) error {
-	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeJson, "ok")
+	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeJSON, "ok")
 	return nil
 }
 
 // TestHtml Method to test content html type
 func (h *DemoAPI) TestHtml(ctx *fasthttp.RequestCtx) error {
-	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeHtml, "ok")
+	WriteResponseString(ctx, fasthttp.StatusOK, ContentTypeHTML, "ok")
 	return nil
 }
 
@@ -78,9 +77,8 @@ func TestVAPI_RegisterService(t *testing.T) {
 }
 
 func TestVAPI_GetServiceMap(t *testing.T) {
-	serviceMap, err := apiService.GetServiceMap()
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(serviceMap))
+	serviceMap := apiService.GetServiceMap()
+	assert.Equal(t, 7, len(serviceMap))
 }
 
 func Test(t *testing.T) {
@@ -134,7 +132,7 @@ func TestVAPI_CallAPI_WrongAnswer(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "svapi: error test error", string(bodyB))
-	assert.Equal(t, ContentTypeHtml, res.Header.Get("Content-type"))
+	assert.Equal(t, ContentTypeHTML, res.Header.Get("Content-type"))
 }
 
 func TestVAPI_CallAPI_WrongAnswer_WithCustomErrorHandler(t *testing.T) {
@@ -153,7 +151,7 @@ func TestVAPI_CallAPI_WrongAnswer_WithCustomErrorHandler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, `{"error": "test error"}`, string(bodyB))
-	assert.Equal(t, ContentTypeJson, res.Header.Get("Content-type"))
+	assert.Equal(t, ContentTypeJSON, res.Header.Get("Content-type"))
 
 	apiService.SetErrorHandlerFunction(defaultErrorHandler)
 }
@@ -171,7 +169,7 @@ func TestVAPI_CallAPI_Json(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "ok", string(bodyB))
-	assert.Equal(t, ContentTypeJson, res.Header.Get("Content-type"))
+	assert.Equal(t, ContentTypeJSON, res.Header.Get("Content-type"))
 }
 
 func TestVAPI_CallAPI_Html(t *testing.T) {
@@ -187,7 +185,7 @@ func TestVAPI_CallAPI_Html(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "ok", string(bodyB))
-	assert.Equal(t, ContentTypeHtml, res.Header.Get("Content-type"))
+	assert.Equal(t, ContentTypeHTML, res.Header.Get("Content-type"))
 }
 
 func TestVAPI_CallAPI_Xml(t *testing.T) {
@@ -203,7 +201,7 @@ func TestVAPI_CallAPI_Xml(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "ok", string(bodyB))
-	assert.Equal(t, ContentTypeXml, res.Header.Get("Content-type"))
+	assert.Equal(t, ContentTypeXML, res.Header.Get("Content-type"))
 }
 
 func TestVAPI_CallAPI_Rss(t *testing.T) {
@@ -219,7 +217,7 @@ func TestVAPI_CallAPI_Rss(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "ok", string(bodyB))
-	assert.Equal(t, ContentTypeRssXml, res.Header.Get("Content-type"))
+	assert.Equal(t, ContentTypeRssXML, res.Header.Get("Content-type"))
 }
 
 func TestVAPI_CallAPI_Atom(t *testing.T) {
@@ -235,7 +233,7 @@ func TestVAPI_CallAPI_Atom(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "ok", string(bodyB))
-	assert.Equal(t, ContentTypeAtomXml, res.Header.Get("Content-type"))
+	assert.Equal(t, ContentTypeAtomXML, res.Header.Get("Content-type"))
 }
 
 func TestVAPI_CallAPI_Protobuf(t *testing.T) {
