@@ -78,9 +78,7 @@ func (as *SVAPI) register(rcvr interface{}, serviceName string) error {
 
 	as.services[serviceName] = true
 
-	as.serviceMap[serviceName] = []string{}
-
-	addedMethodCounter := 0
+	var tmpMethodList []string
 
 	// Setup methods.
 	for i := 0; i < rcvrType.NumMethod(); i++ {
@@ -120,15 +118,15 @@ func (as *SVAPI) register(rcvr interface{}, serviceName string) error {
 			method:   method,
 		}
 
-		smap := as.serviceMap[serviceName]
-		as.serviceMap[serviceName] = append(smap, method.Name)
+		tmpMethodList = append(tmpMethodList, method.Name)
 
-		addedMethodCounter++
 	}
 
-	if addedMethodCounter == 0 {
+	if len(tmpMethodList) == 0 {
 		return fmt.Errorf("svapi: %q has no exported methods of suitable type", serviceName)
 	}
+
+	as.serviceMap[serviceName] = tmpMethodList
 
 	return nil
 }
