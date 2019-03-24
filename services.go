@@ -21,6 +21,7 @@ type SVAPI struct {
 	services      map[string]bool
 	errorCallback ErrorHandlerFunction
 	methods       map[string]*serviceMethod
+	serviceMap    map[string][]string
 }
 
 // serviceMethod - sub struct
@@ -77,6 +78,8 @@ func (as *SVAPI) register(rcvr interface{}, serviceName string) error {
 
 	as.services[serviceName] = true
 
+	as.serviceMap[serviceName] = []string{}
+
 	addedMethodCounter := 0
 
 	// Setup methods.
@@ -117,6 +120,9 @@ func (as *SVAPI) register(rcvr interface{}, serviceName string) error {
 			method:   method,
 		}
 
+		smap := as.serviceMap[serviceName]
+		as.serviceMap[serviceName] = append(smap, method.Name)
+
 		addedMethodCounter++
 	}
 
@@ -153,11 +159,8 @@ func (as *SVAPI) get(serviceWithMethod string) (*serviceMethod, error) {
 }
 
 // GetServiceMap returns an api methods list
-func (as *SVAPI) GetServiceMap() (res []string) {
-	for key := range as.methods {
-		res = append(res, key)
-	}
-	return
+func (as *SVAPI) GetServiceMap() map[string][]string {
+	return as.serviceMap
 }
 
 // CallAPI call api method and process it.
@@ -187,6 +190,7 @@ func NewServer() *SVAPI {
 	return &SVAPI{
 		services:      make(map[string]bool),
 		methods:       make(map[string]*serviceMethod),
+		serviceMap:    make(map[string][]string),
 		errorCallback: defaultErrorHandler,
 	}
 }

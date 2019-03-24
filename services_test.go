@@ -78,7 +78,7 @@ func TestVAPI_RegisterService(t *testing.T) {
 
 func TestVAPI_GetServiceMap(t *testing.T) {
 	serviceMap := apiService.GetServiceMap()
-	assert.Equal(t, 7, len(serviceMap))
+	assert.Equal(t, 1, len(serviceMap))
 }
 
 func Test(t *testing.T) {
