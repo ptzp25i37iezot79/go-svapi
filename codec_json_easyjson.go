@@ -36,8 +36,10 @@ func easyjson932ebafbDecodeGithubComRiftbitGoVapi(in *jlexer.Lexer, out *TestRep
 			continue
 		}
 		switch key {
-		case "ID":
+		case "id":
 			out.ID = string(in.String())
+		case "ttt":
+			out.Ttt = string(in.String())
 		default:
 			in.SkipRecursive()
 		}
@@ -52,8 +54,8 @@ func easyjson932ebafbEncodeGithubComRiftbitGoVapi(out *jwriter.Writer, in TestRe
 	out.RawByte('{')
 	first := true
 	_ = first
-	{
-		const prefix string = ",\"ID\":"
+	if in.ID != "" {
+		const prefix string = ",\"id\":"
 		if first {
 			first = false
 			out.RawString(prefix[1:])
@@ -61,6 +63,16 @@ func easyjson932ebafbEncodeGithubComRiftbitGoVapi(out *jwriter.Writer, in TestRe
 			out.RawString(prefix)
 		}
 		out.String(string(in.ID))
+	}
+	if in.Ttt != "" {
+		const prefix string = ",\"ttt\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Ttt))
 	}
 	out.RawByte('}')
 }
@@ -107,8 +119,10 @@ func easyjson932ebafbDecodeGithubComRiftbitGoVapi1(in *jlexer.Lexer, out *TestAr
 			continue
 		}
 		switch key {
-		case "ID":
+		case "id":
 			out.ID = string(in.String())
+		case "ttt":
+			out.Ttt = string(in.String())
 		default:
 			in.SkipRecursive()
 		}
@@ -123,8 +137,8 @@ func easyjson932ebafbEncodeGithubComRiftbitGoVapi1(out *jwriter.Writer, in TestA
 	out.RawByte('{')
 	first := true
 	_ = first
-	{
-		const prefix string = ",\"ID\":"
+	if in.ID != "" {
+		const prefix string = ",\"id\":"
 		if first {
 			first = false
 			out.RawString(prefix[1:])
@@ -132,6 +146,16 @@ func easyjson932ebafbEncodeGithubComRiftbitGoVapi1(out *jwriter.Writer, in TestA
 			out.RawString(prefix)
 		}
 		out.String(string(in.ID))
+	}
+	if in.Ttt != "" {
+		const prefix string = ",\"ttt\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Ttt))
 	}
 	out.RawByte('}')
 }

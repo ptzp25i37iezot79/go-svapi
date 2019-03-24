@@ -3,7 +3,6 @@ package vapi
 import (
 	"fmt"
 	"reflect"
-	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -38,22 +37,4 @@ func WriteResponse(ctx *fasthttp.RequestCtx, status int, resp ServerResponse) {
 	}
 	ctx.Response.Header.Set("x-content-type-options", "nosniff")
 	ctx.SetContentType("application/json; charset=utf-8")
-}
-
-var errorsPool = sync.Pool{
-	New: func() interface{} {
-		// The Pool's New function should generally only return pointer
-		// types, since a pointer can be put into the return interface
-		// value without an allocation:
-		return new(Error)
-	},
-}
-
-var responsePool = sync.Pool{
-	New: func() interface{} {
-		// The Pool's New function should generally only return pointer
-		// types, since a pointer can be put into the return interface
-		// value without an allocation:
-		return new(ServerResponse)
-	},
 }

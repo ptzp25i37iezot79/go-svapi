@@ -24,7 +24,21 @@ type DemoAPI struct{}
 // Test Method to test
 func (h *DemoAPI) Test(ctx *fasthttp.RequestCtx, Args *TestArgs, Reply *TestReply) error {
 	Reply.ID = Args.ID
+	Reply.Ttt = Args.Ttt
 	return nil
+}
+
+// ErrorTest Method to test
+func (h *DemoAPI) ErrorTest(ctx *fasthttp.RequestCtx, Args *TestArgs, Reply *TestReply) error {
+
+	errs := &Error{
+		ErrorHTTPCode: fasthttp.StatusFailedDependency,
+		ErrorCode:     606,
+		ErrorMessage:  "Test Wrong answer",
+		Data:          nil,
+	}
+
+	return errs
 }
 
 func TestNewServer(t *testing.T) {
@@ -73,9 +87,35 @@ func Test(t *testing.T) {
 	go fasthttp.Serve(inMemoryServer, reqHandler)
 }
 
-func TestVAPI_CallAPI(t *testing.T) {
+func TestVAPI_CallAPI_WrongAnswer(t *testing.T) {
 
 	var jsonStr = []byte(`{"ID":"onomnomnom"}`)
+
+	req, err := http.NewRequest("POST", "http://testerr/api/demo.ErrorTest", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Error(err)
+	}
+	ress, err := apiClient.Do(req)
+
+	if ress.StatusCode != fasthttp.StatusFailedDependency {
+		t.Error(fmt.Sprintf("wrong answer http status code received: %d", ress.StatusCode))
+	}
+
+	bodyS, err := ioutil.ReadAll(ress.Body)
+	if err != nil {
+		t.Error(err)
+	}
+
+	bodyStr := string(bodyS)
+
+	if bodyStr != "{\"error\":{\"error_code\":606,\"error_msg\":\"Test Wrong answer\",\"data\":null}}" {
+		t.Error(fmt.Sprintf("wrong answer received: %s", bodyStr))
+	}
+}
+
+func TestVAPI_CallAPI(t *testing.T) {
+
+	var jsonStr = []byte(`{"id":"onomnomnom"}`)
 
 	req, err := http.NewRequest("POST", "http://test/api/demo.Test", bytes.NewBuffer(jsonStr))
 	if err != nil {
@@ -92,7 +132,57 @@ func TestVAPI_CallAPI(t *testing.T) {
 		t.Error(err)
 	}
 
-	if string(body) != "{\"response\":{\"ID\":\"onomnomnom\"}}" {
+	if string(body) != "{\"response\":{\"id\":\"onomnomnom\"}}" {
+		t.Error(fmt.Sprintf("wrong answer received: %s", body))
+	}
+}
+
+func TestVAPI_CallAPI_WrongAnswer2(t *testing.T) {
+
+	var jsonStr = []byte(`{"id":"onomnomnom"}`)
+
+	req, err := http.NewRequest("POST", "http://testerr/api/demo.ErrorTest", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Error(err)
+	}
+	ress, err := apiClient.Do(req)
+
+	if ress.StatusCode != fasthttp.StatusFailedDependency {
+		t.Error(fmt.Sprintf("wrong answer http status code received: %d", ress.StatusCode))
+	}
+
+	bodyS, err := ioutil.ReadAll(ress.Body)
+	if err != nil {
+		t.Error(err)
+	}
+
+	bodyStr := string(bodyS)
+
+	if bodyStr != "{\"error\":{\"error_code\":606,\"error_msg\":\"Test Wrong answer\",\"data\":null}}" {
+		t.Error(fmt.Sprintf("wrong answer received: %s", bodyStr))
+	}
+}
+
+func TestVAPI_CallAPI2(t *testing.T) {
+
+	var jsonStr = []byte(`{"id":"onomnomnom2","ttt":"aaa"}`)
+
+	req, err := http.NewRequest("POST", "http://test/api/demo.Test", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Error(err)
+	}
+	res, err := apiClient.Do(req)
+
+	if res.StatusCode != 200 {
+		t.Error(fmt.Sprintf("wrong answer http status code received: %d", res.StatusCode))
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(body) != `{"response":{"id":"onomnomnom2","ttt":"aaa"}}` {
 		t.Error(fmt.Sprintf("wrong answer received: %s", body))
 	}
 }
