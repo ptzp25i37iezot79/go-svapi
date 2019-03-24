@@ -15,7 +15,7 @@ const (
 	// ContentTypeXML Content type for XML
 	ContentTypeXML = "application/xml; charset=utf-8"
 
-	// ContentTypeRSS Content type for RSS
+	// ContentTypeRssXML Content type for RSS
 	ContentTypeRssXML = "application/rss+xml; charset=utf-8"
 
 	// ContentTypeAtomXML Content type for ATOM
@@ -34,7 +34,7 @@ func isExported(name string) bool {
 	return unicode.IsUpper(runez)
 }
 
-// SendPushFunction type that define function that used to send push
+// ErrorHandlerFunction type that define function that used to process error from api method
 type ErrorHandlerFunction func(ctx *fasthttp.RequestCtx, err error)
 
 func defaultErrorHandler(ctx *fasthttp.RequestCtx, err error) {
